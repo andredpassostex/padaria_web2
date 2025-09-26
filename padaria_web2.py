@@ -138,8 +138,7 @@ elif menu == "Estoque":
     preco = st.number_input("Preço unitário", min_value=0.01, step=0.01)
     if st.button("Cadastrar Produto"):
         cadastrar_produto(nome, qtd, preco)
-    if st.button("Zerar Estoque"):
-    zerar_estoque()
+   
 
     st.subheader("Produtos em Estoque")
     if st.session_state['produtos']:
@@ -210,4 +209,5 @@ elif menu == "Caixa":
         gerar_relatorio("diario")
     if st.button("Relatório Semanal"):
         gerar_relatorio("semanal")
+
 
