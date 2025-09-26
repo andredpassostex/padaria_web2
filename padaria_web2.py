@@ -6,6 +6,15 @@ import pandas as pd
 from datetime import datetime
 from PIL import Image
 import plotly.express as px
+import sys
+import subprocess
+
+# Tenta importar Plotly, instala automaticamente se não estiver presente
+try:
+    import plotly.express as px
+except ModuleNotFoundError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "plotly"])
+    import plotly.express as px
 
 # ================= Classes =================
 class Produto:
@@ -253,3 +262,4 @@ elif choice == "Caixa":
             st.info("Nenhuma venda registrada hoje.")
     else:
         st.info("Nenhuma venda registrada ainda.")
+
