@@ -56,9 +56,8 @@ logo = try_load_logo()
 if logo:
     cols = st.columns([1,2,1])
     cols[1].image(logo, width=260)
-    cols[1].markdown("<h2 style='text-align:center; color:#4B2E2E; margin-top:6px;'>Sistema de Padaria</h2>", unsafe_allow_html=True)
 else:
-    st.markdown("<h1 style='text-align:center; color:#4B2E2E;'>🥖 Lucio Pães - Sistema de Padaria</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center; color:#4B2E2E;'>🥖 Lucio Pães</h1>", unsafe_allow_html=True)
     uploaded = st.file_uploader("Upload da logo (PNG/JPG)", type=["png","jpg","jpeg"])
     if uploaded:
         logo = Image.open(uploaded)
@@ -116,12 +115,10 @@ elif choice == "Clientes":
             st.write(f"Total acumulado: R$ {total_cliente:.2f}")
 
             if c.historico_compras:
-                # tabela detalhada das compras
                 df_cliente = pd.DataFrame(c.historico_compras,
                                           columns=["Produto","Quantidade","Total","Data/Hora","Funcionário"])
                 st.dataframe(df_cliente.sort_values("Data/Hora", ascending=False))
                 
-                # botão para zerar conta
                 if st.button(f"Zerar conta de {c.nome}", key=f"zerar_{c.nome}"):
                     c.historico_compras.clear()
                     st.success(f"Conta de {c.nome} zerada.")
@@ -140,7 +137,6 @@ elif choice == "Clientes":
             else:
                 st.session_state["clientes"].append(Cliente(nome_cliente))
                 st.success(f"Cliente {nome_cliente} cadastrado com sucesso!")
-
 
 # ================= Estoque =================
 elif choice == "Estoque":
@@ -214,16 +210,10 @@ elif choice == "Venda":
                 
                 # Atualiza linha de venda existente para mesmo produto e cliente
                 venda_existente = None
-                if cliente_sel != "Nenhum":
-                    for v in st.session_state["vendas"]:
-                        if v[0] == produto_obj.codigo and v[7] == cliente_sel:
-                            venda_existente = v
-                            break
-                else:
-                    for v in st.session_state["vendas"]:
-                        if v[0] == produto_obj.codigo and v[7] == "Nenhum":
-                            venda_existente = v
-                            break
+                for v in st.session_state["vendas"]:
+                    if v[0] == produto_obj.codigo and v[7] == cliente_sel:
+                        venda_existente = v
+                        break
                 
                 if venda_existente:
                     venda_existente[2] += qtd_venda
@@ -280,4 +270,3 @@ elif choice == "Caixa":
             st.info("Nenhuma venda registrada hoje.")
     else:
         st.info("Nenhuma venda registrada ainda.")
-
