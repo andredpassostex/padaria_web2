@@ -1,9 +1,9 @@
-# padaria_erp_final.py
+# ================= padaria_erp_completo.py =================
+import os
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 from PIL import Image
-import os
 
 # ================= Classes =================
 class Produto:
@@ -32,7 +32,7 @@ class Fornecedor:
         self.prazo = prazo
 
 class Usuario:
-    def __init__(self, nome, senha, perfil):
+    def __init__(self, nome, senha, perfil="vendedor"):
         self.nome = nome.strip()
         self.senha = senha
         self.perfil = perfil
@@ -40,7 +40,8 @@ class Usuario:
 # ================= Inicialização =================
 for key, default in [
     ("produtos", []), ("funcionarios", []), ("clientes", []),
-    ("fornecedores", []), ("vendas", []), ("usuarios", []), ("codigo_produto", 1)
+    ("fornecedores", []), ("vendas", []), ("codigo_produto", 1),
+    ("usuarios", [])
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
@@ -50,11 +51,11 @@ for key in ["tela_selecionada","submenu_selecionado","mostrar_caixa","mostrar_co
         st.session_state[key] = None if "submenu" in key or "tela" in key else False
 
 # ================= Funções Gerais =================
-def mostrar_logo(size=400):
+def mostrar_logo(size):
     logo_path = "logo.png"
     if os.path.exists(logo_path):
         img = Image.open(logo_path)
-        st.image(img, width=size)
+        st.image(img,width=size)
     else:
         st.markdown(f"<h1 style='text-align:center; color:#4B2E2E;'>🥖 Lucio Pães</h1>", unsafe_allow_html=True)
 
@@ -64,10 +65,9 @@ def box_title(texto,icone="📌"):
                     border-radius: 10px; box-shadow: 2px 2px 10px rgba(0,0,0,0.15);
                     margin-bottom: 12px;' >
             <h3 style='text-align: center; color: #4B2E2E; margin:6px 0;'>{icone} {texto}</h3>
-        </div>
-    """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
 
-# ================= Cadastro =================
+# ================= Cadastro e Autenticação =================
 def cadastrar_produto(nome,qtd,preco):
     codigo = str(st.session_state["codigo_produto"]).zfill(3)
     st.session_state["produtos"].append(Produto(codigo,nome,int(qtd),float(preco)))
@@ -90,10 +90,10 @@ def remover_funcionario(nome):
 
 def cadastrar_cliente(nome):
     if nome.strip()=="":
-        st.error("Digite o nome do cliente")
+        st.error("Digite o nome do cliente.")
         return None
     for c in st.session_state["clientes"]:
-        if c.nome.lower() == nome.lower():
+        if c.nome.lower()==nome.lower():
             return c
     novo = Cliente(nome)
     st.session_state["clientes"].append(novo)
@@ -108,12 +108,12 @@ def cadastrar_fornecedor(nome,contato="",produto="",preco=0.0,prazo=0):
     st.session_state["fornecedores"].append(novo)
     st.success(f"Fornecedor {nome} cadastrado")
 
-def cadastrar_usuario(nome,senha,perfil):
+def cadastrar_usuario(nome,senha,perfil="vendedor"):
     if nome.strip()=="" or senha.strip()=="":
-        st.error("Digite nome e senha")
+        st.error("Usuário e senha obrigatórios")
         return
     for u in st.session_state["usuarios"]:
-        if u.nome.lower() == nome.lower():
+        if u.nome.lower()==nome.lower():
             st.warning("Usuário já existe")
             return
     st.session_state["usuarios"].append(Usuario(nome,senha,perfil))
@@ -121,7 +121,7 @@ def cadastrar_usuario(nome,senha,perfil):
 
 def autenticar_usuario(nome,senha):
     for u in st.session_state["usuarios"]:
-        if u.nome.lower() == nome.lower() and u.senha==senha:
+        if u.nome.lower()==nome.lower() and u.senha==senha:
             return u
     return None
 
@@ -141,11 +141,10 @@ def dashboard():
     if col1.button("👁️", key="btn_caixa"):
         st.session_state["mostrar_caixa"] = not st.session_state["mostrar_caixa"]
     col2.metric("Vendas Hoje", len(vendas_hoje))
+    col3.metric("Produtos Baixos", len(produtos_baixos))
     if produtos_baixos:
-        baixo_text = ", ".join([f"{p.nome} ({p.qtd})" for p in produtos_baixos])
-    else:
-        baixo_text = "Nenhum"
-    col3.metric("Produtos Baixos", baixo_text)
+        nomes = ", ".join([f"{p.nome}({p.qtd})" for p in produtos_baixos])
+        col3.caption(f"Produtos: {nomes}")
     display_conta = f"R$ {total_contas:.2f}" if st.session_state["mostrar_contas"] else "R$ ****"
     col4.metric("Clientes com Conta", display_conta)
     if col4.button("👁️", key="btn_conta"):
@@ -167,8 +166,10 @@ def registrar_venda(produto, funcionario, cliente, quantidade, tipo="imediata"):
         st.warning(f"⚠ Estoque baixo: {produto.nome} apenas {produto.qtd} unidades restantes!")
 
 # ================= Tela Funcional =================
-def tela_funcional(tela, submenu):
+def tela_funcional():
     mostrar_logo(200)
+    tela = st.session_state["tela_selecionada"]
+    submenu = st.session_state["submenu_selecionado"]
 
     # Estoque
     if tela=="Estoque":
@@ -217,27 +218,29 @@ def tela_funcional(tela, submenu):
         if submenu=="Histórico":
             box_title("Histórico de Clientes")
             if st.session_state["clientes"]:
-                with st.expander("Clientes"):
-                    for c in sorted(st.session_state["clientes"], key=lambda x:x.nome):
-                        if c.historico:
-                            st.write(f"**{c.nome}**")
-                            df = pd.DataFrame(c.historico, columns=["Produto","Qtd","Total","Data/Hora","Funcionário","Tipo"])
-                            st.table(df)
-                        else:
-                            st.info(f"{c.nome}: Sem histórico")
+                st.expander("Clientes",expanded=True)
+                nomes = sorted([c.nome for c in st.session_state["clientes"]])
+                sel = st.selectbox("Selecione o cliente", nomes)
+                cliente = next(c for c in st.session_state["clientes"] if c.nome==sel)
+                historico_reserva = [x for x in cliente.historico if x[5]=="reserva"]
+                if historico_reserva:
+                    df = pd.DataFrame(historico_reserva, columns=["Produto","Qtd","Total","Data/Hora","Funcionário","Tipo"])
+                    st.table(df)
+                else:
+                    st.info("Sem histórico pendente.")
             else:
                 st.info("Nenhum cliente cadastrado")
         elif submenu=="Conta":
             box_title("Gerenciar Conta do Cliente")
             if st.session_state["clientes"]:
-                nomes = [c.nome for c in st.session_state["clientes"]]
+                nomes = sorted([c.nome for c in st.session_state["clientes"]])
                 sel = st.selectbox("Escolha o cliente", nomes)
                 cliente = next(c for c in st.session_state["clientes"] if c.nome==sel)
                 total_reserva = sum(x[2] for x in cliente.historico if x[5]=="reserva")
                 st.markdown(f"**Total em Reserva:** R$ {total_reserva:.2f}")
                 historico_reserva = [x for x in cliente.historico if x[5]=="reserva"]
                 if historico_reserva:
-                    df = pd.DataFrame(historico_reserva, columns=["Produto", "Qtd", "Total", "Data/Hora", "Funcionário", "Tipo"])
+                    df = pd.DataFrame(historico_reserva, columns=["Produto","Qtd","Total","Data/Hora","Funcionário","Tipo"])
                     st.table(df)
                 else:
                     st.info("Sem compras em aberto.")
@@ -287,35 +290,11 @@ def tela_funcional(tela, submenu):
             if st.button("Registrar Venda"):
                 registrar_venda(produto,funcionario,cliente,qtd,tipo)
 
-# ================= Sidebar =================
-def sidebar():
-    menu_principal = ["Dashboard","Vendas","Caixa"]
-    menu_expansivo = {
-        "Estoque":["Cadastrar Produto","Produtos"],
-        "Funcionários":["Cadastrar Funcionário","Funcionários","Remover Funcionário"],
-        "Clientes":["Histórico","Conta"],
-        "Fornecedores":["Cadastrar Fornecedor","Fornecedores"]
-    }
-
-    st.sidebar.header("📌 Menu")
-    for item in menu_principal:
-        if st.sidebar.button(item):
-            st.session_state["tela_selecionada"]=item
-            st.session_state["submenu_selecionado"]=None
-
-    for item, submenus in menu_expansivo.items():
-        exp = st.sidebar.expander(item,expanded=False)
-        with exp:
-            for sub in submenus:
-                if st.button(sub,key=f"{item}_{sub}"):
-                    st.session_state["tela_selecionada"]=item
-                    st.session_state["submenu_selecionado"]=sub
-
 # ================= Tela Login =================
 def tela_login():
     st.title("Login do Sistema")
-    nome = st.text_input("Usuário")
-    senha = st.text_input("Senha", type="password")
+    nome = st.text_input("Usuário", key="login_nome")
+    senha = st.text_input("Senha", type="password", key="login_senha")
     if st.button("Entrar"):
         user = autenticar_usuario(nome,senha)
         if user:
@@ -324,44 +303,54 @@ def tela_login():
         else:
             st.error("Usuário ou senha incorretos")
 
- st.subheader("Cadastrar Novo Usuário")
-nome_c = st.text_input("Usuário (novo cadastro)", key="nome_cadastro")
-senha_c = st.text_input("Senha", type="password", key="senha_cadastro")
-perfil_c = st.selectbox("Perfil", ["Gerente", "Vendedor"], key="perfil_cadastro")
+    st.markdown("---")
+    st.subheader("Cadastrar Novo Usuário")
+    nome_c = st.text_input("Usuário", key="cadastro_nome")
+    senha_c = st.text_input("Senha", type="password", key="cadastro_senha")
+    perfil = st.selectbox("Perfil",["vendedor","gerente"], key="cadastro_perfil")
+    if st.button("Cadastrar Usuário"):
+        cadastrar_usuario(nome_c,senha_c,perfil)
 
-if st.button("Cadastrar Usuário"):
-    if nome_c and senha_c:
-        novo = cadastrar_usuario(nome_c, senha_c, perfil_c)
-        if novo:
-            st.success(f"Usuário {nome_c} cadastrado com sucesso!")
-            # Limpa os campos de input
-            st.session_state["nome_cadastro"] = ""
-            st.session_state["senha_cadastro"] = ""
-    else:
-        st.warning("Preencha todos os campos para cadastrar o usuário.")
+# ================= Sidebar =================
+def sidebar():
+    if st.session_state.get("usuario_logado"):
+        st.sidebar.header(f"👤 {st.session_state['usuario_logado'].nome} ({st.session_state['usuario_logado'].perfil})")
+        if st.sidebar.button("Logout"):
+            st.session_state["usuario_logado"]=None
+            st.experimental_rerun()
 
+        menu_principal = ["Dashboard","Vendas","Caixa"]
+        menu_expansivo = {
+            "Estoque":["Cadastrar Produto","Produtos"],
+            "Funcionários":["Cadastrar Funcionário","Funcionários","Remover Funcionário"],
+            "Clientes":["Histórico","Conta"],
+            "Fornecedores":["Cadastrar Fornecedor","Fornecedores"]
+        }
+
+        for item in menu_principal:
+            if st.sidebar.button(item):
+                st.session_state["tela_selecionada"]=item
+                st.session_state["submenu_selecionado"]=None
+
+        for item, submenus in menu_expansivo.items():
+            exp = st.sidebar.expander(item,expanded=False)
+            with exp:
+                for sub in submenus:
+                    if st.button(sub,key=f"{item}_{sub}"):
+                        st.session_state["tela_selecionada"]=item
+                        st.session_state["submenu_selecionado"]=sub
 
 # ================= Main =================
 def main():
-    if not st.session_state.get("usuario_logado"):
+    st.set_page_config(layout="wide")
+    if st.session_state.get("usuario_logado") is None:
         tela_login()
     else:
-        st.sidebar.markdown(f"**Usuário:** {st.session_state['usuario_logado'].nome} | Perfil: {st.session_state['usuario_logado'].perfil}")
-        if st.sidebar.button("Sair"):
-            st.session_state["usuario_logado"] = None
-            st.session_state["tela_selecionada"] = None
-            st.session_state["submenu_selecionado"] = None
-            st.experimental_rerun()
         sidebar()
-        tela = st.session_state["tela_selecionada"]
-        submenu = st.session_state["submenu_selecionado"]
-        if tela=="Dashboard":
+        if st.session_state.get("tela_selecionada")=="Dashboard":
             dashboard()
-        elif tela:
-            tela_funcional(tela, submenu)
+        else:
+            tela_funcional()
 
-# ================= Run =================
 if __name__=="__main__":
     main()
-
-
