@@ -186,7 +186,33 @@ def tela_funcional():
                     remover_funcionario(sel)
             else:
                 st.info("Nenhum funcionário cadastrado")
+  # ================= Caixa =================
+    elif tela == "Caixa":
+        if submenu in ["Diário", "Semanal", "Mensal"]:
+            box_title(f"Vendas - {submenu}")
+            if not st.session_state["vendas"]:
+                st.info("Nenhuma venda registrada.")
+            else:
+                now = datetime.now()
+                if submenu == "Diário":
+                    vendas_filtradas = [v for v in st.session_state["vendas"] if v[6].date() == now.date()]
+                elif submenu == "Semanal":
+                    start_week = now - pd.to_timedelta(now.weekday(), unit='d')
+                    end_week = start_week + pd.Timedelta(days=6)
+                    vendas_filtradas = [v for v in st.session_state["vendas"] if start_week.date() <= v[6].date() <= end_week.date()]
+                elif submenu == "Mensal":
+                    vendas_filtradas = [v for v in st.session_state["vendas"] if v[6].year == now.year and v[6].month == now.month]
 
+                if vendas_filtradas:
+                    df = pd.DataFrame(
+                        [[v[1], v[2], v[6].strftime("%d/%m/%Y %H:%M"), v[7], v[5]] for v in vendas_filtradas],
+                        columns=["Produto", "Quantidade", "Hora", "Funcionário", "Tipo"]
+                    )
+                    st.table(df)
+                    total_vendas = sum(v[4] for v in vendas_filtradas)
+                    st.markdown(f"**Total Vendas ({submenu}): R$ {total_vendas:.2f}**")
+                else:
+                    st.info(f"Nenhuma venda registrada no período {submenu.lower()}.")
     # ================= Clientes =================
     elif tela == "Clientes":
         if submenu == "Histórico":
@@ -305,6 +331,7 @@ if st.session_state["tela_selecionada"]=="Dashboard":
     dashboard()
 else:
     tela_funcional()
+
 
 
 
