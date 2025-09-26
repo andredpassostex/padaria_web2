@@ -12,7 +12,7 @@ if 'funcionarios' not in st.session_state:
     st.session_state['funcionarios'] = []
 
 if 'vendas' not in st.session_state:
-    st.session_state['vendas'] = []
+    st.session_state['vendas'] = []  # [produto, qtd, preco_unit, funcionario, data_hora]
 
 if 'caixa_total' not in st.session_state:
     st.session_state['caixa_total'] = 0.0
@@ -22,10 +22,8 @@ if 'contador_produtos' not in st.session_state:
 
 # --- Funções ---
 def cadastrar_produto(nome, qtd, preco):
-    # Normaliza nome
     nome = nome.strip().title()
 
-    # Verifica se já existe
     produto_existente = next(
         (p for p in st.session_state['produtos'] if p[1].lower() == nome.lower()),
         None
@@ -59,46 +57,13 @@ def registrar_venda(produto_nome, funcionario, venda_qtd):
     produto[2] -= venda_qtd
     valor_venda = venda_qtd * produto[3]
     st.session_state['caixa_total'] += valor_venda
-    data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    data_hora = datetime.now()  # datetime real, não string
     st.session_state['vendas'].append([produto[1], venda_qtd, produto[3], funcionario, data_hora])
 
     st.success(f"Venda de {venda_qtd}x {produto[1]} registrada por {funcionario}!")
 
     if produto[2] <= 5:
         st.warning(f"⚠ Restam apenas {produto[2]} itens de {produto[1]} em estoque!")
-
-def gerar_relatorio(periodo="diario"):
-    if not st.session_state['vendas']:
-        st.warning("Nenhuma venda registrada ainda!")
-        return
-
-    df = pd.DataFrame(st.session_state['vendas'], columns=["Produto", "Quantidade", "Preço Unitário", "Funcionário", "Data/Hora"])
-    df["Data/Hora"] = pd.to_datetime(df["Data/Hora"])
-    hoje = datetime.now()
-
-    if periodo == "diario":
-        df_periodo = df[df["Data/Hora"].dt.date == hoje.date()]
-    elif periodo == "semanal":
-        inicio_semana = hoje - pd.Timedelta(days=hoje.weekday())
-        df_periodo = df[(df["Data/Hora"].dt.date >= inicio_semana.date()) & (df["Data/Hora"].dt.date <= hoje.date())]
-    else:
-        st.error("Período inválido!")
-        return
-
-    if df_periodo.empty:
-        st.info(f"Nenhuma venda registrada no período {periodo}.")
-        return
-
-    output = io.BytesIO()
-    df_periodo.to_excel(output, index=False)
-    output.seek(0)
-
-    st.download_button(
-        label=f"Baixar relatório {periodo}",
-        data=output,
-        file_name=f"relatorio_{periodo}_{hoje.strftime('%Y%m%d')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
 
 def zerar_estoque():
     for p in st.session_state['produtos']:
@@ -179,35 +144,28 @@ elif menu == "Caixa":
     st.subheader("Relatório de Vendas do Dia")
 
     if st.session_state['vendas']:
-      df_vendas = pd.DataFrame(
-    st.session_state['vendas'],
-    columns=["Produto", "Quantidade", "Preço Unitário", "Funcionário", "Data/Hora"],
-)
+        df_vendas = pd.DataFrame(
+            st.session_state['vendas'],
+            columns=["Produto", "Quantidade", "Preço Unitário", "Funcionário", "Data/Hora"],
+        )
 
-# Converte "Data/Hora" de string para datetime
-df_vendas["Data/Hora"] = pd.to_datetime(df_vendas["Data/Hora"], errors="coerce")
+        # Garantir que Data/Hora está em datetime
+        df_vendas["Data/Hora"] = pd.to_datetime(df_vendas["Data/Hora"], errors="coerce")
+        df_vendas["Total"] = df_vendas["Quantidade"] * df_vendas["Preço Unitário"]
 
-# Calcula o total por venda
-df_vendas["Total"] = df_vendas["Quantidade"] * df_vendas["Preço Unitário"]
-
-hoje = datetime.now().date()
-df_vendas_dia = df_vendas[df_vendas["Data/Hora"].dt.date == hoje]
-
+        hoje = datetime.now().date()
+        df_vendas_dia = df_vendas[df_vendas["Data/Hora"].dt.date == hoje]
 
         if not df_vendas_dia.empty:
             st.table(df_vendas_dia[["Produto", "Quantidade", "Preço Unitário", "Total"]])
 
             total_dia = df_vendas_dia["Total"].sum()
             st.markdown("### TOTAL DO DIA")
-            st.table(pd.DataFrame([["", "", "", total_dia]], columns=["Produto", "Quantidade", "Preço Unitário", "Total"]))
+            st.table(pd.DataFrame(
+                [["", "", "", total_dia]],
+                columns=["Produto", "Quantidade", "Preço Unitário", "Total"]
+            ))
         else:
             st.info("Nenhuma venda registrada hoje.")
     else:
         st.info("Nenhuma venda registrada.")
-
-    st.subheader("Gerar Relatórios")
-    if st.button("Relatório Diário"):
-        gerar_relatorio("diario")
-    if st.button("Relatório Semanal"):
-        gerar_relatorio("semanal")
-
