@@ -6,30 +6,37 @@ import io
 
 # --- Dados ---
 if 'produtos' not in st.session_state:
-    st.session_state['produtos'] = []
-
+    st.session_state['produtos'] = []  # cada produto: [codigo, nome, qtd, preco]
 if 'funcionarios' not in st.session_state:
     st.session_state['funcionarios'] = []
-
 if 'vendas' not in st.session_state:
-    st.session_state['vendas'] = []
-
+    st.session_state['vendas'] = []  # cada venda: [codigo, nome, qtd, preco, funcionario, data]
 if 'caixa_total' not in st.session_state:
     st.session_state['caixa_total'] = 0.0
+if 'contador_produtos' not in st.session_state:
+    st.session_state['contador_produtos'] = 0
 
 
 # --- Funções ---
+def gerar_codigo():
+    """Gera código sequencial tipo 001, 002, 003..."""
+    st.session_state['contador_produtos'] += 1
+    return str(st.session_state['contador_produtos']).zfill(3)
+
+
 def cadastrar_produto(nome, qtd, preco):
-    # Verifica se o produto já existe (case-insensitive)
-    produto_existente = next((p for p in st.session_state['produtos']
-                              if p[0].lower() == nome.lower()), None)
+    # Verifica se já existe produto com mesmo nome (case-insensitive)
+    produto_existente = next(
+        (p for p in st.session_state['produtos'] if p[1].lower() == nome.lower()), None
+    )
     if produto_existente:
-        produto_existente[1] += qtd
-        produto_existente[2] = preco
-        st.success(f"Produto {nome} atualizado: estoque +{qtd} unidades.")
+        produto_existente[2] += qtd
+        produto_existente[3] = preco
+        st.success(f"Produto {produto_existente[0]} - {nome} atualizado: estoque +{qtd} unidades.")
     else:
-        st.session_state['produtos'].append([nome, qtd, preco])
-        st.success(f"Produto {nome} cadastrado com sucesso!")
+        codigo = gerar_codigo()
+        st.session_state['produtos'].append([codigo, nome, qtd, preco])
+        st.success(f"Produto {codigo} - {nome} cadastrado com sucesso!")
 
 
 def cadastrar_funcionario(nome):
@@ -41,27 +48,29 @@ def cadastrar_funcionario(nome):
 
 
 def registrar_venda(produto_nome, funcionario, venda_qtd):
-    produto = next((p for p in st.session_state['produtos']
-                    if p[0].lower() == produto_nome.lower()), None)
+    produto = next(
+        (p for p in st.session_state['produtos'] if p[1].lower() == produto_nome.lower()),
+        None,
+    )
     if produto is None:
         st.error("Produto não encontrado!")
         return
-    if venda_qtd > produto[1]:
+    if venda_qtd > produto[2]:
         st.error("Quantidade insuficiente no estoque!")
         return
 
-    produto[1] -= venda_qtd
-    valor_venda = venda_qtd * produto[2]
+    produto[2] -= venda_qtd
+    valor_venda = venda_qtd * produto[3]
     st.session_state['caixa_total'] += valor_venda
     data_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     st.session_state['vendas'].append(
-        [produto[0], venda_qtd, produto[2], funcionario, data_hora]
+        [produto[0], produto[1], venda_qtd, produto[3], funcionario, data_hora]
     )
 
-    st.success(f"Venda de {venda_qtd}x {produto[0]} registrada por {funcionario}!")
-    if produto[1] <= 5:
-        st.warning(f"⚠ Restam apenas {produto[1]} itens de {produto[0]} em estoque!")
+    st.success(f"Venda de {venda_qtd}x {produto[1]} registrada por {funcionario}!")
+    if produto[2] <= 5:
+        st.warning(f"⚠ Restam apenas {produto[2]} itens de {produto[1]} em estoque!")
 
 
 def gerar_relatorio(periodo="diario"):
@@ -71,7 +80,7 @@ def gerar_relatorio(periodo="diario"):
 
     df = pd.DataFrame(
         st.session_state['vendas'],
-        columns=["Produto", "Quantidade", "Preço Unitário", "Funcionário", "Data/Hora"]
+        columns=["Código", "Produto", "Quantidade", "Preço Unitário", "Funcionário", "Data/Hora"],
     )
     df["Data/Hora"] = pd.to_datetime(df["Data/Hora"])
     hoje = datetime.now()
@@ -132,8 +141,11 @@ elif menu == "Estoque":
 
     st.subheader("Produtos em Estoque")
     if st.session_state['produtos']:
-        for p in st.session_state['produtos']:
-            st.write(f"{p[0]} - Estoque: {p[1]} - R${p[2]:.2f}")
+        df_estoque = pd.DataFrame(
+            st.session_state['produtos'],
+            columns=["Código", "Produto", "Quantidade", "Preço Unitário"],
+        )
+        st.dataframe(df_estoque, use_container_width=True)
     else:
         st.info("Nenhum produto cadastrado.")
 
@@ -143,11 +155,9 @@ elif menu == "Venda":
     if not st.session_state['produtos'] or not st.session_state['funcionarios']:
         st.info("Cadastre produtos e funcionários antes de registrar vendas.")
     else:
-        # Campo de texto com sugestão dinâmica
         produto_digitado = st.text_input("Digite o nome do produto")
-
-        sugestoes = [p[0] for p in st.session_state['produtos'] 
-                     if produto_digitado.lower() in p[0].lower()] if produto_digitado else []
+        sugestoes = [p[1] for p in st.session_state['produtos']
+                     if produto_digitado.lower() in p[1].lower()] if produto_digitado else []
 
         if sugestoes:
             prod_nome = st.selectbox("Sugestões de produtos", sugestoes)
@@ -165,12 +175,36 @@ elif menu == "Venda":
 
 # Caixa
 elif menu == "Caixa":
-    st.subheader("Caixa Total")
-    st.write(f"R${st.session_state['caixa_total']:.2f}")
+    st.subheader("Relatório de Vendas do Dia")
+
+    if st.session_state['vendas']:
+        df = pd.DataFrame(
+            st.session_state['vendas'],
+            columns=["Código", "Produto", "Quantidade", "Preço Unitário", "Funcionário", "Data/Hora"],
+        )
+        df["Data/Hora"] = pd.to_datetime(df["Data/Hora"])
+        hoje = datetime.now().date()
+        df_hoje = df[df["Data/Hora"].dt.date == hoje].copy()
+        df_hoje["Total"] = df_hoje["Quantidade"] * df_hoje["Preço Unitário"]
+
+        if not df_hoje.empty:
+            st.dataframe(
+                df_hoje[["Produto", "Quantidade", "Preço Unitário", "Total"]],
+                use_container_width=True,
+            )
+
+            total_dia = df_hoje[["Quantidade", "Preço Unitário", "Total"]].sum(numeric_only=True)
+            total_df = pd.DataFrame([["TOTAL DO DIA", total_dia["Quantidade"],
+                                      "-", total_dia["Total"]]],
+                                    columns=["Produto", "Quantidade", "Preço Unitário", "Total"])
+            st.dataframe(total_df, use_container_width=True)
+        else:
+            st.info("Nenhuma venda registrada hoje.")
+    else:
+        st.info("Nenhuma venda registrada ainda.")
 
     st.subheader("Gerar Relatórios")
     if st.button("Relatório Diário"):
         gerar_relatorio("diario")
     if st.button("Relatório Semanal"):
         gerar_relatorio("semanal")
-
