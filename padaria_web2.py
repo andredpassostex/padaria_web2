@@ -73,7 +73,7 @@ if logo:
     cols[1].image(logo, width=260)
     cols[1].markdown("<h2 style='text-align:center; color:#4B2E2E; margin-top:6px;'>Sistema de Padaria</h2>", unsafe_allow_html=True)
 else:
-    st.markdown("<h1 style='text-align:center; color:#4B2E2E;'>🥖 Lucio Pães - Sistema de Padaria</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center; color:#4B2E2E;'>🥖 Lucio Pães</h1>", unsafe_allow_html=True)
     uploaded = st.file_uploader("Upload da logo (PNG/JPG)", type=["png","jpg","jpeg"])
     if uploaded:
         logo = Image.open(uploaded)
@@ -218,3 +218,4 @@ elif choice == "Caixa":
         st.markdown(f"### TOTAL DO DIA: R$ {total_dia:.2f}")
     else:
         st.info("Nenhuma venda registrada hoje.")
+
