@@ -1,4 +1,4 @@
-# padaria_streamlit_altair.py
+# padaria_profissional.py
 import os
 import streamlit as st
 import pandas as pd
@@ -50,6 +50,17 @@ def try_load_logo():
             except:
                 continue
     return None
+
+def card_metric(title, value, color="#4B2E2E"):
+    st.markdown(
+        f"""
+        <div style='background-color:{color}; color:white; border-radius:10px;
+                    padding:15px; text-align:center; margin:5px;'>
+            <h4>{title}</h4>
+            <h2>{value}</h2>
+        </div>
+        """, unsafe_allow_html=True
+    )
 
 # ================= Cabeçalho =================
 logo = try_load_logo()
@@ -135,19 +146,6 @@ elif choice == "Clientes":
     else:
         st.info("Nenhum cliente cadastrado.")
 
-    box_title("➕ Cadastrar Cliente")
-    with st.form("form_cliente"):
-        nome_cliente = st.text_input("Nome do cliente")
-        submit_cliente = st.form_submit_button("Cadastrar")
-        if submit_cliente:
-            if nome_cliente.strip() == "":
-                st.error("Digite o nome do cliente.")
-            elif nome_cliente.lower() in [c.nome.lower() for c in st.session_state["clientes"]]:
-                st.warning(f"Cliente {nome_cliente} já cadastrado!")
-            else:
-                st.session_state["clientes"].append(Cliente(nome_cliente))
-                st.success(f"Cliente {nome_cliente} cadastrado!")
-
 # ================= Estoque =================
 elif choice == "Estoque":
     box_title("📦 Produtos")
@@ -185,14 +183,20 @@ elif choice == "Venda":
             prod_sel = st.selectbox("Produto", produtos_display)
             produto_obj = next(p for p in st.session_state["produtos"] if p.codigo == prod_sel.split(" - ")[0])
             func_sel = st.selectbox("Funcionário", [f.nome for f in st.session_state["funcionarios"]])
-            if st.session_state["clientes"]:
-                cliente_sel = st.selectbox("Cliente (opcional)", ["Nenhum"] + [c.nome for c in st.session_state["clientes"]])
-            else:
-                cliente_sel = "Nenhum"
+            
+            cliente_input = st.text_input("Cliente (opcional)")
             qtd_venda = st.number_input("Quantidade", min_value=1, step=1)
             submit_venda = st.form_submit_button("Registrar Venda")
 
         if submit_venda:
+            cliente_nome = cliente_input.strip().title() if cliente_input.strip() != "" else "Nenhum"
+
+            # Cadastro automático de cliente
+            if cliente_nome != "Nenhum" and cliente_nome.lower() not in [c.nome.lower() for c in st.session_state["clientes"]]:
+                st.session_state["clientes"].append(Cliente(cliente_nome))
+                st.success(f"Cliente {cliente_nome} cadastrado automaticamente!")
+
+            # Atualiza estoque
             if qtd_venda > produto_obj.qtd:
                 st.error("Quantidade insuficiente no estoque!")
             else:
@@ -203,7 +207,7 @@ elif choice == "Venda":
                 # Atualiza linha de venda existente
                 venda_existente = None
                 for v in st.session_state["vendas"]:
-                    if v[0]==produto_obj.codigo and v[7]==cliente_sel:
+                    if v[0]==produto_obj.codigo and v[7]==cliente_nome:
                         venda_existente=v
                         break
 
@@ -215,15 +219,15 @@ elif choice == "Venda":
                 else:
                     st.session_state["vendas"].append([
                         produto_obj.codigo, produto_obj.nome, qtd_venda,
-                        produto_obj.preco, total_venda, func_sel, data_hora, cliente_sel
+                        produto_obj.preco, total_venda, func_sel, data_hora, cliente_nome
                     ])
 
                 # Atualiza histórico do cliente
-                if cliente_sel!="Nenhum":
-                    cliente_obj = next(c for c in st.session_state["clientes"] if c.nome==cliente_sel)
+                if cliente_nome!="Nenhum":
+                    cliente_obj = next(c for c in st.session_state["clientes"] if c.nome==cliente_nome)
                     cliente_obj.historico_compras.append([produto_obj.nome, qtd_venda, total_venda, data_hora, func_sel])
 
-                st.success(f"Venda de {qtd_venda}x {produto_obj.nome} registrada para {cliente_sel} por {func_sel}!")
+                st.success(f"Venda de {qtd_venda}x {produto_obj.nome} registrada para {cliente_nome} por {func_sel}!")
 
                 # Estoque baixo alerta
                 key_popup = f"popup_{produto_obj.codigo}"
