@@ -209,13 +209,37 @@ elif choice == "Venda":
 # ================= Caixa =================
 elif choice == "Caixa":
     box_title("Relatório de Vendas do Dia", "📊")
-    vendas_dia = [v for v in st.session_state["vendas"] if isinstance(v, Venda) and v.data_hora.date() == datetime.now().date()]
-    if vendas_dia:
-        df = pd.DataFrame([[v.item,v.quantidade,v.valor_unitario,v.total,v.funcionario] for v in vendas_dia],
-                          columns=["Item","Quantidade","Valor Unitário","Total","Funcionário"])
-        st.dataframe(df)
-        total_dia = sum(v.total for v in vendas_dia)
-        st.markdown(f"### TOTAL DO DIA: R$ {total_dia:.2f}")
+
+    # Filtra apenas vendas válidas (instâncias de Venda)
+    vendas_validas = [v for v in st.session_state["vendas"] if isinstance(v, Venda)]
+
+    if vendas_validas:
+        # Cria DataFrame com todas vendas
+        df_vendas = pd.DataFrame(
+            [[v.codigo, v.item, v.quantidade, v.valor_unitario, v.total, v.funcionario, v.data_hora] 
+             for v in vendas_validas],
+            columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora"]
+        )
+
+        # Converte Data/Hora e Total para tipos corretos
+        df_vendas["Data/Hora"] = pd.to_datetime(df_vendas["Data/Hora"], errors="coerce")
+        df_vendas["Total"] = pd.to_numeric(df_vendas["Total"], errors="coerce")
+
+        # Filtra apenas vendas do dia atual
+        hoje = datetime.now().date()
+        df_vendas_dia = df_vendas[df_vendas["Data/Hora"].dt.date == hoje]
+
+        if not df_vendas_dia.empty:
+            st.dataframe(df_vendas_dia[["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora"]])
+            
+            # Calcula total do dia
+            total_dia = df_vendas_dia["Total"].sum()
+            st.markdown("### TOTAL DO DIA")
+            st.table(pd.DataFrame([["", "", "", "", round(float(total_dia), 2), "", ""]],
+                                  columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora"]))
+        else:
+            st.info("Nenhuma venda registrada hoje.")
     else:
-        st.info("Nenhuma venda registrada hoje.")
+        st.info("Nenhuma venda registrada ainda.")
+
 
