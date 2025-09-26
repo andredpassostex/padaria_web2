@@ -1,4 +1,4 @@
-# padaria_profissional_completo.py
+# padaria_profissional_dashboard.py
 import os
 import streamlit as st
 import pandas as pd
@@ -7,15 +7,12 @@ from PIL import Image
 
 # ================= Classes =================
 class Produto:
-    def __init__(self, codigo, nome, qtd, preco, estoque_min=5, data_fab=None, validade=None, lote=""):
+    def __init__(self, codigo, nome, qtd, preco, estoque_min=5):
         self.codigo = codigo
         self.nome = nome.title()
         self.qtd = qtd
         self.preco = preco
         self.estoque_min = estoque_min
-        self.data_fab = data_fab
-        self.validade = validade
-        self.lote = lote
 
 class Funcionario:
     def __init__(self, nome):
@@ -124,30 +121,65 @@ else:
 # ================= Menu lateral =================
 st.sidebar.header("📌 Menu")
 
+tela_selecionada = "Dashboard"  # default
+
 with st.sidebar.expander("Estoque"):
-    estoque_opcao = st.radio("Escolha", ["Cadastrar Produto","Produtos"], key="menu_estoque")
+    escolha_estoque = st.radio("Escolha", ["Cadastrar Produto","Produtos"], key="menu_estoque")
+    if st.button("Ir para Estoque"):
+        tela_selecionada = "Estoque"
+
 with st.sidebar.expander("Funcionários"):
-    func_opcao = st.radio("Escolha", ["Cadastrar Funcionário","Funcionários"], key="menu_funcionarios")
+    escolha_func = st.radio("Escolha", ["Cadastrar Funcionário","Funcionários"], key="menu_funcionarios")
+    if st.button("Ir para Funcionários"):
+        tela_selecionada = "Funcionários"
+
 with st.sidebar.expander("Clientes"):
-    cliente_opcao = st.radio("Escolha", ["Histórico","Conta"], key="menu_clientes")
-venda_opcao = st.sidebar.button("Venda")
-caixa_opcao = st.sidebar.button("Caixa")
+    escolha_cliente = st.radio("Escolha", ["Histórico","Conta"], key="menu_clientes")
+    if st.button("Ir para Clientes"):
+        tela_selecionada = "Clientes"
+
+if st.sidebar.button("Venda"):
+    tela_selecionada = "Venda"
+
+if st.sidebar.button("Caixa"):
+    tela_selecionada = "Caixa"
+
 with st.sidebar.expander("Fornecedores"):
-    fornecedor_opcao = st.radio("Escolha", ["Cadastrar Fornecedor"], key="menu_fornecedor")
+    escolha_fornecedor = st.radio("Escolha", ["Cadastrar Fornecedor"], key="menu_fornecedor")
+    if st.button("Ir para Fornecedores"):
+        tela_selecionada = "Fornecedores"
+
 with st.sidebar.expander("Relatórios"):
-    relatorio_opcao = st.radio("Escolha", ["Diário","Semanal","Mensal"], key="menu_relatorios")
+    escolha_relatorio = st.radio("Escolha", ["Diário","Semanal","Mensal"], key="menu_relatorios")
+    if st.button("Ir para Relatórios"):
+        tela_selecionada = "Relatorios"
+
+# ================= Dashboard =================
+def dashboard():
+    box_title("📊 Dashboard")
+    total_caixa = sum(v[4] for v in st.session_state["vendas"] if v[5]=="imediata")
+    vendas_hoje = [v for v in st.session_state["vendas"] if v[5]=="imediata" and v[6].date()==datetime.now().date()]
+    produtos_baixos = [p for p in st.session_state["produtos"] if p.qtd<=p.estoque_min]
+    clientes_conta = [c for c in st.session_state["clientes"] if sum(x[2] for x in c.historico if x[5]=="reserva")>0]
+
+    col1,col2,col3,col4 = st.columns(4)
+    col1.metric("Total Caixa", f"R$ {total_caixa:.2f}")
+    col2.metric("Vendas Hoje", len(vendas_hoje))
+    col3.metric("Produtos Baixos", len(produtos_baixos))
+    col4.metric("Clientes com Conta", len(clientes_conta))
 
 # ================= Telas =================
-if 'estoque_opcao' in locals():
-    if estoque_opcao=="Cadastrar Produto":
-        box_title("Cadastrar Produto")
+if tela_selecionada=="Dashboard":
+    dashboard()
+elif tela_selecionada=="Estoque":
+    box_title("Estoque")
+    if escolha_estoque=="Cadastrar Produto":
         nome = st.text_input("Nome do Produto")
         qtd = st.number_input("Quantidade",min_value=1,step=1)
         preco = st.number_input("Preço unitário",min_value=0.01,step=0.01,format="%.2f")
         if st.button("Cadastrar"):
             cadastrar_produto(nome,qtd,preco)
     else:
-        box_title("Produtos")
         if st.session_state["produtos"]:
             df = pd.DataFrame([[p.codigo,p.nome,p.qtd,p.preco] for p in st.session_state["produtos"]],
                               columns=["Código","Produto","Qtd","Preço"])
@@ -155,23 +187,22 @@ if 'estoque_opcao' in locals():
         else:
             st.info("Nenhum produto cadastrado.")
 
-if 'func_opcao' in locals():
-    if func_opcao=="Cadastrar Funcionário":
-        box_title("Cadastrar Funcionário")
+elif tela_selecionada=="Funcionários":
+    box_title("Funcionários")
+    if escolha_func=="Cadastrar Funcionário":
         nome = st.text_input("Nome do Funcionário")
         if st.button("Cadastrar Funcionário"):
             cadastrar_funcionario(nome)
     else:
-        box_title("Funcionários")
         if st.session_state["funcionarios"]:
             for f in st.session_state["funcionarios"]:
                 st.write(f.nome)
         else:
             st.info("Nenhum funcionário cadastrado.")
 
-if 'cliente_opcao' in locals():
-    if cliente_opcao=="Histórico":
-        box_title("Histórico Clientes")
+elif tela_selecionada=="Clientes":
+    box_title("Clientes")
+    if escolha_cliente=="Histórico":
         for c in st.session_state["clientes"]:
             st.markdown(f"### {c.nome}")
             if c.historico:
@@ -181,7 +212,6 @@ if 'cliente_opcao' in locals():
             else:
                 st.info("Sem histórico.")
     else:
-        box_title("Conta Clientes")
         for c in st.session_state["clientes"]:
             saldo = sum(h[2] for h in c.historico if h[5]=="reserva")
             st.write(f"{c.nome}: R$ {saldo:.2f}")
@@ -189,7 +219,7 @@ if 'cliente_opcao' in locals():
                 if st.button(f"Zerar conta {c.nome}"):
                     zerar_conta_cliente(c)
 
-if venda_opcao:
+elif tela_selecionada=="Venda":
     box_title("Registrar Venda")
     if not st.session_state["produtos"] or not st.session_state["funcionarios"]:
         st.info("Cadastre produtos e funcionários antes.")
@@ -206,22 +236,22 @@ if venda_opcao:
         if st.button("Registrar Venda"):
             registrar_venda(prod_obj,func_obj,cliente_obj,qtd,tipo)
 
-if caixa_opcao:
+elif tela_selecionada=="Caixa":
     box_title("Caixa do Dia")
     hoje = datetime.now().date()
     vendas_dia = [v for v in st.session_state["vendas"] if v[5]=="imediata" and v[6].date()==hoje]
     if vendas_dia:
-        df = pd.DataFrame([[v[1],v[2],v[3],v[4],v[7],v[4]] for v in vendas_dia],
-                          columns=["Produto","Qtd","Preço Unit","Total","Cliente","Total"])
+        df = pd.DataFrame([[v[1],v[2],v[3],v[4],v[7]] for v in vendas_dia],
+                          columns=["Produto","Qtd","Preço Unit","Total","Cliente"])
         st.table(df)
         total_dia = sum(v[4] for v in vendas_dia)
         st.markdown(f"### TOTAL DO DIA: R$ {total_dia:.2f}")
     else:
         st.info("Nenhuma venda hoje.")
 
-if 'fornecedor_opcao' in locals():
-    if fornecedor_opcao=="Cadastrar Fornecedor":
-        box_title("Cadastrar Fornecedor")
+elif tela_selecionada=="Fornecedores":
+    box_title("Fornecedores")
+    if escolha_fornecedor=="Cadastrar Fornecedor":
         nome = st.text_input("Nome do Fornecedor")
         contato = st.text_input("Contato")
         produto_f = st.text_input("Produto fornecido")
@@ -231,18 +261,18 @@ if 'fornecedor_opcao' in locals():
             st.session_state["fornecedores"].append(Fornecedor(nome,contato,produto_f,preco_f,prazo))
             st.success(f"Fornecedor {nome} cadastrado.")
 
-if 'relatorio_opcao' in locals():
-    box_title(f"Relatório {relatorio_opcao}")
-    if relatorio_opcao=="Diário":
+elif tela_selecionada=="Relatorios":
+    box_title(f"Relatório {escolha_relatorio}")
+    if escolha_relatorio=="Diário":
         inicio = datetime.now() - timedelta(days=1)
-    elif relatorio_opcao=="Semanal":
+    elif escolha_relatorio=="Semanal":
         inicio = datetime.now() - timedelta(days=7)
     else:
         inicio = datetime.now() - timedelta(days=30)
     vendas_rel = [v for v in st.session_state["vendas"] if v[6]>=inicio]
     if vendas_rel:
-        df = pd.DataFrame([[v[1],v[2],v[3],v[4],v[7],v[4]] for v in vendas_rel],
-                          columns=["Produto","Qtd","Preço Unit","Total","Cliente","Total"])
+        df = pd.DataFrame([[v[1],v[2],v[3],v[4],v[7]] for v in vendas_rel],
+                          columns=["Produto","Qtd","Preço Unit","Total","Cliente"])
         st.table(df)
         total = sum(v[4] for v in vendas_rel)
         st.markdown(f"### Total: R$ {total:.2f}")
