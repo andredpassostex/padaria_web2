@@ -82,7 +82,6 @@ def registrar_venda(produto_nome, funcionario, venda_qtd):
     valor_venda = venda_qtd * produto[3]
     st.session_state["caixa_total"] += valor_venda
     data_hora = datetime.now()
-    # Adiciona venda com segurança: garante 7 elementos
     st.session_state["vendas"].append([produto[0], produto[1], venda_qtd, produto[3], valor_venda, funcionario, data_hora])
     st.success(f"Venda de {venda_qtd}x {produto[1]} registrada por {funcionario}!")
     if produto[2] <= 5:
@@ -131,7 +130,6 @@ if logo is None:
         except Exception as e:
             st.error(f"Erro ao abrir/salvar imagem: {e}")
 
-# Exibição do logo / título
 if logo:
     cols = st.columns([1, 2, 1])
     cols[1].image(logo, width=260)
@@ -165,7 +163,6 @@ if choice == "Funcionários":
 elif choice == "Estoque":
     box_title("Produtos Cadastrados", "📦")
 
-    # Normaliza produtos antigos (compatibilidade)
     normalized = []
     for p in st.session_state["produtos"]:
         if len(p) == 3:
@@ -225,7 +222,6 @@ elif choice == "Caixa":
     box_title("Relatório de Vendas do Dia", "📊")
 
     if st.session_state["vendas"]:
-        # Normaliza vendas: garante 7 elementos
         vendas_normalizadas = []
         for v in st.session_state["vendas"]:
             v_corrigido = list(v) + [None]*(7 - len(v))
@@ -236,24 +232,21 @@ elif choice == "Caixa":
             columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora"]
         )
 
-        # Converte tipos
         df_vendas["Data/Hora"] = pd.to_datetime(df_vendas["Data/Hora"], errors="coerce")
         df_vendas["Quantidade"] = pd.to_numeric(df_vendas["Quantidade"], errors="coerce").fillna(0)
         df_vendas["Valor Unitário"] = pd.to_numeric(df_vendas["Valor Unitário"], errors="coerce").fillna(0.0)
         df_vendas["Total"] = pd.to_numeric(df_vendas["Total"], errors="coerce").fillna(0.0)
+        df_vendas["Funcionário"] = df_vendas["Funcionário"].fillna("Desconhecido")
 
-        # Filtra vendas do dia
         hoje = datetime.now().date()
         df_vendas_dia = df_vendas[df_vendas["Data/Hora"].dt.date == hoje]
 
         if not df_vendas_dia.empty:
-            st.table(df_vendas_dia[["Item", "Quantidade", "Valor Unitário", "Total"]])
+            st.table(df_vendas_dia[["Item", "Quantidade", "Valor Unitário", "Total", "Funcionário"]])
             total_dia = df_vendas_dia["Total"].sum()
             st.markdown("### TOTAL DO DIA")
-            st.table(pd.DataFrame([["", "", "", round(total_dia, 2)]], columns=["Item", "Quantidade", "Valor Unitário", "Total"]))
+            st.table(pd.DataFrame([["", "", "", round(total_dia, 2), ""]], columns=["Item", "Quantidade", "Valor Unitário", "Total", "Funcionário"]))
         else:
             st.info("Nenhuma venda registrada hoje.")
     else:
         st.info("Nenhuma venda registrada ainda.")
-
-
