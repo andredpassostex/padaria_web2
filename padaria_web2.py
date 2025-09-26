@@ -187,21 +187,39 @@ def tela_funcional():
             else:
                 st.info("Nenhum funcionário cadastrado")
 
-   # ================= Clientes =================
-elif tela == "Clientes":
-    if submenu == "Histórico":
-        box_title("Histórico de Clientes")
-        if not st.session_state["clientes"]:
-            st.info("Nenhum cliente cadastrado")
-        else:
-            # Expander geral para todos os clientes
-            with st.expander("Clientes", expanded=True):
-                # Lista de clientes ordenada alfabeticamente
-                nomes_clientes = sorted([c.nome for c in st.session_state["clientes"]])
-                sel_cliente = st.selectbox("Selecione o cliente", nomes_clientes)
-                cliente = next(c for c in st.session_state["clientes"] if c.nome == sel_cliente)
+    # ================= Clientes =================
+    elif tela == "Clientes":
+        if submenu == "Histórico":
+            box_title("Histórico de Clientes")
+            if not st.session_state["clientes"]:
+                st.info("Nenhum cliente cadastrado")
+            else:
+                # Expander único para todos os clientes
+                with st.expander("Clientes", expanded=True):
+                    nomes_clientes = sorted([c.nome for c in st.session_state["clientes"]])
+                    sel_cliente = st.selectbox("Selecione o cliente", nomes_clientes)
+                    cliente = next(c for c in st.session_state["clientes"] if c.nome == sel_cliente)
 
-                # Mostrar histórico de reservas pendentes
+                    historico_reserva = [x for x in cliente.historico if x[5] == "reserva"]
+                    if historico_reserva:
+                        df = pd.DataFrame(
+                            historico_reserva,
+                            columns=["Produto", "Qtd", "Total", "Data/Hora", "Funcionário", "Tipo"]
+                        )
+                        st.table(df)
+                    else:
+                        st.info("Sem histórico de compras em aberto.")
+
+        elif submenu == "Conta":
+            box_title("Gerenciar Conta do Cliente")
+            if st.session_state["clientes"]:
+                nomes = [c.nome for c in st.session_state["clientes"]]
+                sel = st.selectbox("Escolha o cliente", nomes)
+                cliente = next(c for c in st.session_state["clientes"] if c.nome == sel)
+
+                total_reserva = sum(x[2] for x in cliente.historico if x[5] == "reserva")
+                st.markdown(f"**Total em Reserva:** R$ {total_reserva:.2f}")
+
                 historico_reserva = [x for x in cliente.historico if x[5] == "reserva"]
                 if historico_reserva:
                     df = pd.DataFrame(
@@ -210,39 +228,15 @@ elif tela == "Clientes":
                     )
                     st.table(df)
                 else:
-                    st.info("Sem histórico de compras em aberto.")
+                    st.info("Sem compras em aberto.")
 
-    elif submenu == "Conta":
-        box_title("Gerenciar Conta do Cliente")
-        if st.session_state["clientes"]:
-            nomes = [c.nome for c in st.session_state["clientes"]]
-            sel = st.selectbox("Escolha o cliente", nomes)
-            cliente = next(c for c in st.session_state["clientes"] if c.nome == sel)
-
-            # Total em reserva
-            total_reserva = sum(x[2] for x in cliente.historico if x[5] == "reserva")
-            st.markdown(f"**Total em Reserva:** R$ {total_reserva:.2f}")
-
-            # Histórico detalhado das reservas
-            historico_reserva = [x for x in cliente.historico if x[5] == "reserva"]
-            if historico_reserva:
-                df = pd.DataFrame(
-                    historico_reserva,
-                    columns=["Produto", "Qtd", "Total", "Data/Hora", "Funcionário", "Tipo"]
-                )
-                st.table(df)
+                if st.button("Zerar Conta"):
+                    for x in cliente.historico:
+                        if x[5] == "reserva":
+                            x[5] = "pago"
+                    st.success(f"Conta de {cliente.nome} zerada.")
             else:
-                st.info("Sem compras em aberto.")
-
-            # Botão para zerar conta
-            if st.button("Zerar Conta"):
-                for x in cliente.historico:
-                    if x[5] == "reserva":
-                        x[5] = "pago"
-                st.success(f"Conta de {cliente.nome} zerada.")
-        else:
-            st.info("Nenhum cliente cadastrado")
-
+                st.info("Nenhum cliente cadastrado")
 
     # ================= Fornecedores =================
     elif tela == "Fornecedores":
@@ -311,6 +305,7 @@ if st.session_state["tela_selecionada"]=="Dashboard":
     dashboard()
 else:
     tela_funcional()
+
 
 
 
