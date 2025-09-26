@@ -108,15 +108,26 @@ elif choice == "Funcionários":
 # ================= Clientes =================
 elif choice == "Clientes":
     box_title("Clientes Cadastrados", "🧑‍🤝‍🧑")
+    
     if st.session_state["clientes"]:
         for c in st.session_state["clientes"]:
-            st.write(f"{c.nome} — Total acumulado: R$ {sum(x[2] for x in c.historico_compras):.2f}")
+            st.markdown(f"### {c.nome}")
+            total_cliente = sum(x[2] for x in c.historico_compras)
+            st.write(f"Total acumulado: R$ {total_cliente:.2f}")
+
             if c.historico_compras:
+                # tabela detalhada das compras
+                df_cliente = pd.DataFrame(c.historico_compras,
+                                          columns=["Produto","Quantidade","Total","Data/Hora","Funcionário"])
+                st.dataframe(df_cliente.sort_values("Data/Hora", ascending=False))
+                
+                # botão para zerar conta
                 if st.button(f"Zerar conta de {c.nome}", key=f"zerar_{c.nome}"):
                     c.historico_compras.clear()
                     st.success(f"Conta de {c.nome} zerada.")
     else:
         st.info("Nenhum cliente cadastrado.")
+    
     box_title("Cadastrar Cliente", "➕")
     with st.form("form_cliente"):
         nome_cliente = st.text_input("Nome do cliente")
@@ -129,6 +140,7 @@ elif choice == "Clientes":
             else:
                 st.session_state["clientes"].append(Cliente(nome_cliente))
                 st.success(f"Cliente {nome_cliente} cadastrado com sucesso!")
+
 
 # ================= Estoque =================
 elif choice == "Estoque":
@@ -268,3 +280,4 @@ elif choice == "Caixa":
             st.info("Nenhuma venda registrada hoje.")
     else:
         st.info("Nenhuma venda registrada ainda.")
+
