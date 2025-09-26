@@ -1,4 +1,4 @@
-# padaria_web_final_popup.py
+# padaria_web_final_streamlit.py
 import os
 import streamlit as st
 import pandas as pd
@@ -26,9 +26,6 @@ if "funcionarios" not in st.session_state:
 
 if "vendas" not in st.session_state:
     st.session_state["vendas"] = []
-
-if "caixa_total" not in st.session_state:
-    st.session_state["caixa_total"] = 0.0
 
 if "codigo_produto" not in st.session_state:
     st.session_state["codigo_produto"] = 1
@@ -163,33 +160,35 @@ elif choice == "Venda":
             func_sel = st.selectbox("Funcionário", [f.nome for f in st.session_state["funcionarios"]])
             qtd_venda = st.number_input("Quantidade", min_value=1, step=1)
             submit_venda = st.form_submit_button("Registrar Venda")
-            if submit_venda:
-                if qtd_venda > produto_obj.qtd:
-                    st.error("Quantidade insuficiente no estoque!")
-                else:
-                    produto_obj.qtd -= qtd_venda
-                    data_hora = datetime.now()
-                    total_venda = produto_obj.preco * qtd_venda
-                    st.session_state["vendas"].append([
-                        produto_obj.codigo,
-                        produto_obj.nome,
-                        qtd_venda,
-                        produto_obj.preco,
-                        total_venda,
-                        func_sel,
-                        data_hora
-                    ])
-                    st.success(f"Venda de {qtd_venda}x {produto_obj.nome} registrada por {func_sel}!")
 
-                    # ALERTA ESTOQUE BAIXO COMO POPUP OK
-                    if produto_obj.qtd <= 5:
-                        key_popup = f"popup_{produto_obj.codigo}"
-                        if key_popup not in st.session_state:
-                            st.session_state[key_popup] = True
-                        if st.session_state[key_popup]:
-                            st.warning(f"⚠ Restam apenas {produto_obj.qtd} itens de {produto_obj.nome} em estoque!")
-                            if st.button("OK", key=f"ok_{produto_obj.codigo}"):
-                                st.session_state[key_popup] = False
+        # --- REGISTRO DA VENDA (fora do form para permitir popup OK) ---
+        if submit_venda:
+            if qtd_venda > produto_obj.qtd:
+                st.error("Quantidade insuficiente no estoque!")
+            else:
+                produto_obj.qtd -= qtd_venda
+                data_hora = datetime.now()
+                total_venda = produto_obj.preco * qtd_venda
+                st.session_state["vendas"].append([
+                    produto_obj.codigo,
+                    produto_obj.nome,
+                    qtd_venda,
+                    produto_obj.preco,
+                    total_venda,
+                    func_sel,
+                    data_hora
+                ])
+                st.success(f"Venda de {qtd_venda}x {produto_obj.nome} registrada por {func_sel}!")
+
+        # --- ALERTA ESTOQUE BAIXO COM OK (fora do form) ---
+        key_popup = f"popup_{produto_obj.codigo}"
+        if produto_obj.qtd <= 5:
+            if key_popup not in st.session_state:
+                st.session_state[key_popup] = True
+            if st.session_state[key_popup]:
+                st.warning(f"⚠ Restam apenas {produto_obj.qtd} itens de {produto_obj.nome} em estoque!")
+                if st.button("OK", key=f"ok_{produto_obj.codigo}"):
+                    st.session_state[key_popup] = False
 
 # ================= Caixa =================
 elif choice == "Caixa":
