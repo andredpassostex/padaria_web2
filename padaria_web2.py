@@ -74,8 +74,13 @@ def cadastrar_usuario(nome, senha, perfil):
     if not nome.strip() or not senha.strip():
         st.error("Digite usuário e senha")
         return
+    # Garante que st.session_state["usuarios"] está inicializado
+    if "usuarios" not in st.session_state:
+        st.session_state["usuarios"] = []
+
+    # Verifica se já existe algum usuário com mesmo nome
     for u in st.session_state["usuarios"]:
-        if u.nome.lower() == nome.lower():
+        if isinstance(u, Usuario) and u.nome.lower() == nome.lower():
             st.warning("Usuário já existe")
             return
     novo = Usuario(nome, senha, perfil)
@@ -353,3 +358,4 @@ def main():
 # ================= Run =================
 if __name__=="__main__":
     main()
+
