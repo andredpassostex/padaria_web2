@@ -1,20 +1,10 @@
-
-# padaria_streamlit_visual.py
+# padaria_streamlit_altair.py
 import os
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 from PIL import Image
-import plotly.express as px
-import sys
-import subprocess
-
-# Tenta importar Plotly, instala automaticamente se não estiver presente
-try:
-    import plotly.express as px
-except ModuleNotFoundError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "plotly"])
-    import plotly.express as px
+import altair as alt
 
 # ================= Classes =================
 class Produto:
@@ -94,12 +84,16 @@ if choice == "Dashboard":
     col3.metric("Produtos Baixos", len(produtos_baixos))
     col4.metric("Clientes com conta", len(clientes_conta))
 
-    # Gráfico de vendas por produto
+    # Gráfico de vendas por produto (Altair)
     if vendas_hoje:
         df_vendas = pd.DataFrame(vendas_hoje, columns=["Código","Item","Quantidade","Valor Unitário","Total","Funcionário","Data/Hora","Cliente"])
-        fig = px.bar(df_vendas.groupby("Item")["Quantidade"].sum().reset_index(),
-                     x="Item", y="Quantidade", title="Vendas por Produto Hoje")
-        st.plotly_chart(fig, use_container_width=True)
+        df_plot = df_vendas.groupby("Item")["Quantidade"].sum().reset_index()
+        chart = alt.Chart(df_plot).mark_bar(color="#4B2E2E").encode(
+            x='Item',
+            y='Quantidade',
+            tooltip=['Item','Quantidade']
+        ).properties(title="Vendas por Produto Hoje")
+        st.altair_chart(chart, use_container_width=True)
 
 # ================= Funcionários =================
 elif choice == "Funcionários":
@@ -262,4 +256,3 @@ elif choice == "Caixa":
             st.info("Nenhuma venda registrada hoje.")
     else:
         st.info("Nenhuma venda registrada ainda.")
-
