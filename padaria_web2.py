@@ -88,10 +88,16 @@ def cadastrar_usuario(nome, senha, perfil):
     st.success(f"Usuário {nome} ({perfil}) cadastrado com sucesso!")
 
 def autenticar_usuario(nome, senha):
+    # Garante que a lista de usuários existe
+    if "usuarios" not in st.session_state or not st.session_state["usuarios"]:
+        return None
+
+    # Itera apenas sobre instâncias de Usuario
     for u in st.session_state["usuarios"]:
-        if u.nome.lower() == nome.lower() and u.senha == senha:
+        if isinstance(u, Usuario) and u.nome.lower() == nome.lower() and u.senha == senha:
             return u
     return None
+
 
 # ================= Cadastros =================
 def cadastrar_produto(nome,qtd,preco):
@@ -358,4 +364,5 @@ def main():
 # ================= Run =================
 if __name__=="__main__":
     main()
+
 
