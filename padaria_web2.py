@@ -1,4 +1,4 @@
-# padaria_web_final.py
+# padaria_web_final_popup.py
 import os
 import streamlit as st
 import pandas as pd
@@ -17,25 +17,15 @@ class Funcionario:
     def __init__(self, nome):
         self.nome = nome.title().strip()
 
-class Venda:
-    def __init__(self, produto, funcionario, qtd):
-        self.codigo = produto.codigo
-        self.item = produto.nome
-        self.quantidade = qtd
-        self.valor_unitario = produto.preco
-        self.total = produto.preco * qtd
-        self.funcionario = funcionario.nome
-        self.data_hora = datetime.now()
-
 # ================= Inicialização do estado =================
 if "produtos" not in st.session_state:
-    st.session_state["produtos"] = []  # lista de Produto
+    st.session_state["produtos"] = []
 
 if "funcionarios" not in st.session_state:
-    st.session_state["funcionarios"] = []  # lista de Funcionario
+    st.session_state["funcionarios"] = []
 
 if "vendas" not in st.session_state:
-    st.session_state["vendas"] = []  # lista de Venda
+    st.session_state["vendas"] = []
 
 if "caixa_total" not in st.session_state:
     st.session_state["caixa_total"] = 0.0
@@ -43,7 +33,7 @@ if "caixa_total" not in st.session_state:
 if "codigo_produto" not in st.session_state:
     st.session_state["codigo_produto"] = 1
 
-# ================= Funções utilitárias =================
+# ================= Funções =================
 def box_title(texto, icone="📌"):
     st.markdown(
         f"""
@@ -73,7 +63,7 @@ if logo:
     cols[1].image(logo, width=260)
     cols[1].markdown("<h2 style='text-align:center; color:#4B2E2E; margin-top:6px;'>Sistema de Padaria</h2>", unsafe_allow_html=True)
 else:
-    st.markdown("<h1 style='text-align:center; color:#4B2E2E;'>🥖 Lucio Pães</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center; color:#4B2E2E;'>🥖 Lucio Pães - Sistema de Padaria</h1>", unsafe_allow_html=True)
     uploaded = st.file_uploader("Upload da logo (PNG/JPG)", type=["png","jpg","jpeg"])
     if uploaded:
         logo = Image.open(uploaded)
@@ -86,36 +76,16 @@ st.sidebar.header("📌 Menu")
 menu = ["Dashboard", "Funcionários", "Estoque", "Venda", "Caixa"]
 choice = st.sidebar.radio("Navegação", menu)
 
-# ================= Normaliza vendas antigas =================
-vendas_corrigidas = []
-for v in st.session_state["vendas"]:
-    if isinstance(v, Venda):
-        vendas_corrigidas.append(v)
-    elif isinstance(v, list) and len(v) == 7:
-        # [codigo, item, qtd, valor_unit, total, funcionario, data_hora]
-        try:
-            produto_temp = Produto(v[0], v[1], v[2], v[3])
-            funcionario_temp = Funcionario(v[5])
-            obj = Venda(produto_temp, funcionario_temp, v[2])
-            obj.total = v[4]
-            if isinstance(v[6], datetime):
-                obj.data_hora = v[6]
-            vendas_corrigidas.append(obj)
-        except:
-            continue
-st.session_state["vendas"] = vendas_corrigidas
-
 # ================= Dashboard =================
 if choice == "Dashboard":
     box_title("📊 Dashboard")
-    total_caixa = round(sum(v.total for v in st.session_state["vendas"] if isinstance(v, Venda)), 2)
-    vendas_hoje = [v for v in st.session_state["vendas"] if isinstance(v, Venda) and v.data_hora.date() == datetime.now().date()]
+    total_caixa = round(sum(v[4] for v in st.session_state["vendas"]),2)
+    vendas_hoje = [v for v in st.session_state["vendas"] if v[6].date() == datetime.now().date()]
     produtos_baixos = [p for p in st.session_state["produtos"] if p.qtd <=5]
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Caixa", f"R$ {total_caixa:.2f}")
     col2.metric("Vendas Hoje", len(vendas_hoje))
     col3.metric("Produtos Baixos", len(produtos_baixos))
-
     if produtos_baixos:
         st.warning("⚠ Produtos com estoque baixo: " + ", ".join(p.nome for p in produtos_baixos))
 
@@ -127,7 +97,6 @@ elif choice == "Funcionários":
             st.write(f.nome)
     else:
         st.info("Nenhum funcionário cadastrado.")
-
     box_title("Cadastrar Funcionário", "➕")
     with st.form("form_funcionario"):
         nome_func = st.text_input("Nome do funcionário")
@@ -201,7 +170,6 @@ elif choice == "Venda":
                     produto_obj.qtd -= qtd_venda
                     data_hora = datetime.now()
                     total_venda = produto_obj.preco * qtd_venda
-                    # Armazena como lista, igual ao código inicial
                     st.session_state["vendas"].append([
                         produto_obj.codigo,
                         produto_obj.nome,
@@ -212,17 +180,35 @@ elif choice == "Venda":
                         data_hora
                     ])
                     st.success(f"Venda de {qtd_venda}x {produto_obj.nome} registrada por {func_sel}!")
-                    if produto_obj.qtd <=5:
-                        st.warning(f"⚠ Restam apenas {produto_obj.qtd} itens de {produto_obj.nome} em estoque!")
+
+                    # ALERTA ESTOQUE BAIXO COMO POPUP OK
+                    if produto_obj.qtd <= 5:
+                        key_popup = f"popup_{produto_obj.codigo}"
+                        if key_popup not in st.session_state:
+                            st.session_state[key_popup] = True
+                        if st.session_state[key_popup]:
+                            st.warning(f"⚠ Restam apenas {produto_obj.qtd} itens de {produto_obj.nome} em estoque!")
+                            if st.button("OK", key=f"ok_{produto_obj.codigo}"):
+                                st.session_state[key_popup] = False
 
 # ================= Caixa =================
 elif choice == "Caixa":
     box_title("Relatório de Vendas do Dia", "📊")
-
     if st.session_state["vendas"]:
         df_vendas = pd.DataFrame(st.session_state["vendas"],
-                                 columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Fun]()
+                                 columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora"])
+        df_vendas["Data/Hora"] = pd.to_datetime(df_vendas["Data/Hora"], errors="coerce")
+        df_vendas["Total"] = pd.to_numeric(df_vendas["Total"], errors="coerce")
+        hoje = datetime.now().date()
+        df_vendas_dia = df_vendas[df_vendas["Data/Hora"].dt.date == hoje]
 
-
-
-
+        if not df_vendas_dia.empty:
+            st.dataframe(df_vendas_dia[["Código","Item","Quantidade","Valor Unitário","Total","Funcionário","Data/Hora"]])
+            total_dia = df_vendas_dia["Total"].sum()
+            st.markdown("### TOTAL DO DIA")
+            st.table(pd.DataFrame([["","","","","{:.2f}".format(total_dia),"",""]],
+                                  columns=["Código","Item","Quantidade","Valor Unitário","Total","Funcionário","Data/Hora"]))
+        else:
+            st.info("Nenhuma venda registrada hoje.")
+    else:
+        st.info("Nenhuma venda registrada ainda.")
