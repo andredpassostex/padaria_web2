@@ -225,6 +225,7 @@ elif choice == "Caixa":
     box_title("Relatório de Vendas do Dia", "📊")
 
     if st.session_state["vendas"]:
+        # Normaliza vendas: garante 7 elementos
         vendas_normalizadas = []
         for v in st.session_state["vendas"]:
             v_corrigido = list(v) + [None]*(7 - len(v))
@@ -235,11 +236,13 @@ elif choice == "Caixa":
             columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora"]
         )
 
+        # Converte tipos
         df_vendas["Data/Hora"] = pd.to_datetime(df_vendas["Data/Hora"], errors="coerce")
-        df_vendas["Quantidade"] = pd.to_numeric(df_vendas["Quantidade"], errors="coerce")
-        df_vendas["Valor Unitário"] = pd.to_numeric(df_vendas["Valor Unitário"], errors="coerce")
-        df_vendas["Total"] = pd.to_numeric(df_vendas["Total"], errors="coerce")
+        df_vendas["Quantidade"] = pd.to_numeric(df_vendas["Quantidade"], errors="coerce").fillna(0)
+        df_vendas["Valor Unitário"] = pd.to_numeric(df_vendas["Valor Unitário"], errors="coerce").fillna(0.0)
+        df_vendas["Total"] = pd.to_numeric(df_vendas["Total"], errors="coerce").fillna(0.0)
 
+        # Filtra vendas do dia
         hoje = datetime.now().date()
         df_vendas_dia = df_vendas[df_vendas["Data/Hora"].dt.date == hoje]
 
@@ -247,8 +250,10 @@ elif choice == "Caixa":
             st.table(df_vendas_dia[["Item", "Quantidade", "Valor Unitário", "Total"]])
             total_dia = df_vendas_dia["Total"].sum()
             st.markdown("### TOTAL DO DIA")
-            st.table(pd.DataFrame([["", "", "", round(float(total_dia), 2)]], columns=["Item", "Quantidade", "Valor Unitário", "Total"]))
+            st.table(pd.DataFrame([["", "", "", round(total_dia, 2)]], columns=["Item", "Quantidade", "Valor Unitário", "Total"]))
         else:
             st.info("Nenhuma venda registrada hoje.")
     else:
         st.info("Nenhuma venda registrada ainda.")
+
+
