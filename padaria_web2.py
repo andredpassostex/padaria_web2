@@ -1,19 +1,42 @@
-# padaria_web.py
+# padaria_web_pro.py
 import os
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 from PIL import Image
 
-# --- Inicialização do estado ---
+# ================= Classes =================
+
+class Produto:
+    def __init__(self, codigo, nome, qtd, preco):
+        self.codigo = codigo
+        self.nome = nome
+        self.qtd = qtd
+        self.preco = preco
+
+class Funcionario:
+    def __init__(self, nome):
+        self.nome = nome.title().strip()
+
+class Venda:
+    def __init__(self, produto, funcionario, qtd):
+        self.codigo = produto.codigo
+        self.item = produto.nome
+        self.quantidade = qtd
+        self.valor_unitario = produto.preco
+        self.total = produto.preco * qtd
+        self.funcionario = funcionario.nome
+        self.data_hora = datetime.now()
+
+# ================= Inicialização do estado =================
 if "produtos" not in st.session_state:
-    st.session_state["produtos"] = []  # [codigo, nome, qtd, preco]
+    st.session_state["produtos"] = []  # lista de Produto
 
 if "funcionarios" not in st.session_state:
-    st.session_state["funcionarios"] = []
+    st.session_state["funcionarios"] = []  # lista de Funcionario
 
 if "vendas" not in st.session_state:
-    st.session_state["vendas"] = []  # [codigo, nome, qtd, preco_unit, total, funcionario, data_hora]
+    st.session_state["vendas"] = []  # lista de Venda
 
 if "caixa_total" not in st.session_state:
     st.session_state["caixa_total"] = 0.0
@@ -21,8 +44,7 @@ if "caixa_total" not in st.session_state:
 if "codigo_produto" not in st.session_state:
     st.session_state["codigo_produto"] = 1
 
-
-# --- Funções utilitárias ---
+# ================= Funções utilitárias =================
 def box_title(texto, icone="📌"):
     st.markdown(
         f"""
@@ -35,217 +57,148 @@ def box_title(texto, icone="📌"):
         unsafe_allow_html=True,
     )
 
-
-def cadastrar_produto(nome, qtd, preco):
-    nome = nome.strip().title()
-    if not nome:
-        st.error("Digite o nome do produto.")
-        return
-    produto_existente = next((p for p in st.session_state["produtos"] if p[1].lower() == nome.lower()), None)
-    if produto_existente:
-        produto_existente[2] += int(qtd)
-        produto_existente[3] = float(preco)
-        st.success(f"Produto {nome} atualizado: estoque +{qtd} unidades.")
-    else:
-        codigo = str(st.session_state["codigo_produto"]).zfill(3)
-        st.session_state["produtos"].append([codigo, nome, int(qtd), float(preco)])
-        st.session_state["codigo_produto"] += 1
-        st.success(f"Produto {codigo} - {nome} cadastrado com sucesso!")
-
-
-def cadastrar_funcionario(nome):
-    nome = nome.strip().title()
-    if not nome:
-        st.error("Digite o nome do funcionário.")
-        return
-    if nome.lower() in [f.lower() for f in st.session_state["funcionarios"]]:
-        st.warning(f"Funcionário {nome} já cadastrado!")
-    else:
-        st.session_state["funcionarios"].append(nome)
-        st.success(f"Funcionário {nome} cadastrado com sucesso!")
-
-
-def registrar_venda(produto_nome, funcionario, venda_qtd):
-    produto = next((p for p in st.session_state["produtos"] if p[1].lower() == produto_nome.lower()), None)
-    if produto is None:
-        st.error("Produto não encontrado!")
-        return
-    venda_qtd = int(venda_qtd)
-    if venda_qtd <= 0:
-        st.error("Quantidade inválida.")
-        return
-    if venda_qtd > produto[2]:
-        st.error("Quantidade insuficiente no estoque!")
-        return
-
-    produto[2] -= venda_qtd
-    valor_venda = venda_qtd * produto[3]
-    st.session_state["caixa_total"] += valor_venda
-    data_hora = datetime.now()
-    st.session_state["vendas"].append([produto[0], produto[1], venda_qtd, produto[3], valor_venda, funcionario, data_hora])
-    st.success(f"Venda de {venda_qtd}x {produto[1]} registrada por {funcionario}!")
-    if produto[2] <= 5:
-        st.warning(f"⚠ Restam apenas {produto[2]} itens de {produto[1]} em estoque!")
-
-
-def zerar_estoque():
-    for p in st.session_state["produtos"]:
-        p[2] = 0
-    st.success("✅ Estoque zerado com sucesso!")
-
-
-def remover_produto(codigo):
-    antes = len(st.session_state["produtos"])
-    st.session_state["produtos"] = [p for p in st.session_state["produtos"] if p[0] != codigo]
-    depois = len(st.session_state["produtos"])
-    if depois < antes:
-        st.success("🗑 Produto removido com sucesso!")
-    else:
-        st.warning("Código não encontrado.")
-
-
-# --- Carregar / Upload da logo ---
 def try_load_logo():
     candidates = ["logo.png", "./logo.png", "images/logo.png"]
     for c in candidates:
         if os.path.exists(c):
             try:
                 return Image.open(c)
-            except Exception:
+            except:
                 continue
     return None
 
-
+# ================= Cabeçalho =================
 logo = try_load_logo()
-
-if logo is None:
-    st.warning("Logo não encontrada (arquivo 'logo.png').")
-    uploaded = st.file_uploader("Upload da logo (PNG/JPG)", type=["png", "jpg", "jpeg"])
-    if uploaded is not None:
-        try:
-            logo = Image.open(uploaded)
-            with open("logo.png", "wb") as f:
-                f.write(uploaded.getbuffer())
-            st.success("Logo salva como 'logo.png'.")
-        except Exception as e:
-            st.error(f"Erro ao abrir/salvar imagem: {e}")
-
 if logo:
-    cols = st.columns([1, 2, 1])
+    cols = st.columns([1,2,1])
     cols[1].image(logo, width=260)
     cols[1].markdown("<h2 style='text-align:center; color:#4B2E2E; margin-top:6px;'>Sistema de Padaria</h2>", unsafe_allow_html=True)
 else:
     st.markdown("<h1 style='text-align:center; color:#4B2E2E;'>🥖 Lucio Pães - Sistema de Padaria</h1>", unsafe_allow_html=True)
+    uploaded = st.file_uploader("Upload da logo (PNG/JPG)", type=["png","jpg","jpeg"])
+    if uploaded:
+        logo = Image.open(uploaded)
+        with open("logo.png","wb") as f:
+            f.write(uploaded.getbuffer())
+        st.success("Logo salva como 'logo.png'.")
 
-
-# --- Menu lateral ---
+# ================= Menu lateral =================
 st.sidebar.header("📌 Menu")
-menu = ["Funcionários", "Estoque", "Venda", "Caixa"]
+menu = ["Dashboard", "Funcionários", "Estoque", "Venda", "Caixa"]
 choice = st.sidebar.radio("Navegação", menu)
 
+# ================= Dashboard =================
+if choice == "Dashboard":
+    box_title("📊 Dashboard")
+    total_caixa = round(sum(v.total for v in st.session_state["vendas"]),2)
+    vendas_hoje = [v for v in st.session_state["vendas"] if v.data_hora.date() == datetime.now().date()]
+    produtos_baixos = [p for p in st.session_state["produtos"] if p.qtd <=5]
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Caixa", f"R$ {total_caixa:.2f}")
+    col2.metric("Vendas Hoje", len(vendas_hoje))
+    col3.metric("Produtos Baixos", len(produtos_baixos))
 
-# --- Funcionários ---
-if choice == "Funcionários":
+    if produtos_baixos:
+        st.warning("⚠ Produtos com estoque baixo: " + ", ".join(p.nome for p in produtos_baixos))
+
+# ================= Funcionários =================
+elif choice == "Funcionários":
     box_title("Funcionários Cadastrados", "👨‍🍳")
     if st.session_state["funcionarios"]:
         for f in st.session_state["funcionarios"]:
-            st.write(f)
+            st.write(f.nome)
     else:
         st.info("Nenhum funcionário cadastrado.")
 
     box_title("Cadastrar Funcionário", "➕")
-    nome_func = st.text_input("Nome do funcionário", key="input_nome_funcionario")
-    if st.button("Cadastrar Funcionário"):
-        cadastrar_funcionario(nome_func)
+    with st.form("form_funcionario"):
+        nome_func = st.text_input("Nome do funcionário")
+        submit_func = st.form_submit_button("Cadastrar Funcionário")
+        if submit_func:
+            if nome_func.strip() == "":
+                st.error("Digite o nome do funcionário.")
+            elif nome_func.lower() in [f.nome.lower() for f in st.session_state["funcionarios"]]:
+                st.warning(f"Funcionário {nome_func} já cadastrado!")
+            else:
+                st.session_state["funcionarios"].append(Funcionario(nome_func))
+                st.success(f"Funcionário {nome_func} cadastrado com sucesso!")
 
-
-# --- Estoque ---
+# ================= Estoque =================
 elif choice == "Estoque":
     box_title("Produtos Cadastrados", "📦")
-
-    normalized = []
-    for p in st.session_state["produtos"]:
-        if len(p) == 3:
-            codigo = str(st.session_state["codigo_produto"]).zfill(3)
-            st.session_state["codigo_produto"] += 1
-            normalized.append([codigo, p[0], int(p[1]), float(p[2])])
-        else:
-            normalized.append([p[0], p[1], int(p[2]), float(p[3])])
-    st.session_state["produtos"] = normalized
-
     if st.session_state["produtos"]:
-        df_estoque = pd.DataFrame(st.session_state["produtos"], columns=["Código", "Produto", "Quantidade", "Preço Unitário"])
-        st.table(df_estoque)
+        df_estoque = pd.DataFrame([[p.codigo,p.nome,p.qtd,p.preco] for p in st.session_state["produtos"]],
+                                   columns=["Código","Produto","Quantidade","Preço Unitário"])
+        st.dataframe(df_estoque)
     else:
         st.info("Nenhum produto cadastrado.")
 
     box_title("Cadastrar Produto", "➕")
-    nome_prod = st.text_input("Nome do produto", key="input_nome_produto")
-    qtd_prod = st.number_input("Quantidade inicial", min_value=1, step=1, key="input_qtd_prod")
-    preco_prod = st.number_input("Preço unitário", min_value=0.01, step=0.01, format="%.2f", key="input_preco_prod")
-    if st.button("Cadastrar Produto"):
-        cadastrar_produto(nome_prod, qtd_prod, preco_prod)
+    with st.form("form_produto"):
+        nome_prod = st.text_input("Nome do produto")
+        qtd_prod = st.number_input("Quantidade inicial", min_value=1, step=1)
+        preco_prod = st.number_input("Preço unitário", min_value=0.01, step=0.01, format="%.2f")
+        submit_prod = st.form_submit_button("Cadastrar Produto")
+        if submit_prod:
+            if nome_prod.strip() == "":
+                st.error("Digite o nome do produto.")
+            else:
+                codigo = str(st.session_state["codigo_produto"]).zfill(3)
+                st.session_state["codigo_produto"] += 1
+                st.session_state["produtos"].append(Produto(codigo, nome_prod, qtd_prod, preco_prod))
+                st.success(f"Produto {codigo} - {nome_prod} cadastrado com sucesso!")
 
     box_title("Gerenciar Estoque", "⚙️")
-    if st.button("Zerar Estoque"):
-        zerar_estoque()
-
     if st.session_state["produtos"]:
-        codigos = [f"{p[0]} - {p[1]}" for p in st.session_state["produtos"]]
-        escolha = st.selectbox("Escolha um produto para remover", [""] + codigos, key="select_remover")
+        codigos = [f"{p.codigo} - {p.nome}" for p in st.session_state["produtos"]]
+        escolha = st.selectbox("Escolha um produto para remover", [""]+codigos)
         if st.button("Remover Produto"):
             if escolha:
                 codigo_sel = escolha.split(" - ")[0]
-                remover_produto(codigo_sel)
+                st.session_state["produtos"] = [p for p in st.session_state["produtos"] if p.codigo != codigo_sel]
+                st.success("Produto removido com sucesso!")
 
+        if st.button("Zerar Estoque"):
+            for p in st.session_state["produtos"]:
+                p.qtd = 0
+            st.success("Estoque zerado com sucesso!")
 
-# --- Venda ---
+# ================= Venda =================
 elif choice == "Venda":
     box_title("Registrar Venda", "💰")
-
     if not st.session_state["produtos"] or not st.session_state["funcionarios"]:
         st.info("Cadastre produtos e funcionários antes de registrar vendas.")
     else:
-        produtos_display = [f"{p[0]} - {p[1]}" for p in st.session_state["produtos"]]
-        prod_sel = st.selectbox("Produto", produtos_display, key="select_prod_venda")
-        prod_codigo = prod_sel.split(" - ")[0]
-        produto_obj = next((p for p in st.session_state["produtos"] if p[0] == prod_codigo), None)
-        func_sel = st.selectbox("Funcionário", st.session_state["funcionarios"], key="select_func_venda")
-        qtd_venda = st.number_input("Quantidade", min_value=1, step=1, key="input_qtd_venda")
-        if st.button("Registrar Venda"):
-            if produto_obj and func_sel:
-                registrar_venda(produto_obj[1], func_sel, qtd_venda)
+        with st.form("form_venda"):
+            produtos_display = [f"{p.codigo} - {p.nome}" for p in st.session_state["produtos"]]
+            prod_sel = st.selectbox("Produto", produtos_display)
+            produto_obj = next(p for p in st.session_state["produtos"] if p.codigo == prod_sel.split(" - ")[0])
+            func_sel = st.selectbox("Funcionário", [f.nome for f in st.session_state["funcionarios"]])
+            qtd_venda = st.number_input("Quantidade", min_value=1, step=1)
+            submit_venda = st.form_submit_button("Registrar Venda")
+            if submit_venda:
+                if qtd_venda > produto_obj.qtd:
+                    st.error("Quantidade insuficiente no estoque!")
+                else:
+                    produto_obj.qtd -= qtd_venda
+                    func_obj = next(f for f in st.session_state["funcionarios"] if f.nome == func_sel)
+                    venda = Venda(produto_obj, func_obj, qtd_venda)
+                    st.session_state["vendas"].append(venda)
+                    st.success(f"Venda de {qtd_venda}x {produto_obj.nome} registrada por {func_sel}!")
+                    if produto_obj.qtd <=5:
+                        st.warning(f"⚠ Restam apenas {produto_obj.qtd} itens de {produto_obj.nome} em estoque!")
 
-
-# --- Caixa ---
+# ================= Caixa =================
 elif choice == "Caixa":
     box_title("Relatório de Vendas do Dia", "📊")
-
     if st.session_state["vendas"]:
-        vendas_normalizadas = []
-        for v in st.session_state["vendas"]:
-            v_corrigido = list(v) + [None]*(7 - len(v))
-            vendas_normalizadas.append(v_corrigido[:7])
-
-        df_vendas = pd.DataFrame(
-            vendas_normalizadas,
-            columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora"]
-        )
-
-        df_vendas["Data/Hora"] = pd.to_datetime(df_vendas["Data/Hora"], errors="coerce")
-        df_vendas["Quantidade"] = pd.to_numeric(df_vendas["Quantidade"], errors="coerce").fillna(0)
-        df_vendas["Valor Unitário"] = pd.to_numeric(df_vendas["Valor Unitário"], errors="coerce").fillna(0.0)
-        df_vendas["Total"] = pd.to_numeric(df_vendas["Total"], errors="coerce").fillna(0.0)
-        df_vendas["Funcionário"] = df_vendas["Funcionário"].fillna("Desconhecido")
-
-        hoje = datetime.now().date()
-        df_vendas_dia = df_vendas[df_vendas["Data/Hora"].dt.date == hoje]
-
-        if not df_vendas_dia.empty:
-            st.table(df_vendas_dia[["Item", "Quantidade", "Valor Unitário", "Total", "Funcionário"]])
-            total_dia = df_vendas_dia["Total"].sum()
-            st.markdown("### TOTAL DO DIA")
-            st.table(pd.DataFrame([["", "", "", round(total_dia, 2), ""]], columns=["Item", "Quantidade", "Valor Unitário", "Total", "Funcionário"]))
+        vendas_dia = [v for v in st.session_state["vendas"] if v.data_hora.date() == datetime.now().date()]
+        if vendas_dia:
+            df = pd.DataFrame([[v.item,v.quantidade,v.valor_unitario,v.total,v.funcionario] for v in vendas_dia],
+                              columns=["Item","Quantidade","Valor Unitário","Total","Funcionário"])
+            st.dataframe(df)
+            total_dia = sum(v.total for v in vendas_dia)
+            st.markdown(f"### TOTAL DO DIA: R$ {total_dia:.2f}")
         else:
             st.info("Nenhuma venda registrada hoje.")
     else:
