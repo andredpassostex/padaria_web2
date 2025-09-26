@@ -199,9 +199,18 @@ elif choice == "Venda":
                     st.error("Quantidade insuficiente no estoque!")
                 else:
                     produto_obj.qtd -= qtd_venda
-                    func_obj = next(f for f in st.session_state["funcionarios"] if f.nome == func_sel)
-                    venda = Venda(produto_obj, func_obj, qtd_venda)
-                    st.session_state["vendas"].append(venda)
+                    data_hora = datetime.now()
+                    total_venda = produto_obj.preco * qtd_venda
+                    # Armazena como lista, igual ao código inicial
+                    st.session_state["vendas"].append([
+                        produto_obj.codigo,
+                        produto_obj.nome,
+                        qtd_venda,
+                        produto_obj.preco,
+                        total_venda,
+                        func_sel,
+                        data_hora
+                    ])
                     st.success(f"Venda de {qtd_venda}x {produto_obj.nome} registrada por {func_sel}!")
                     if produto_obj.qtd <=5:
                         st.warning(f"⚠ Restam apenas {produto_obj.qtd} itens de {produto_obj.nome} em estoque!")
@@ -210,36 +219,10 @@ elif choice == "Venda":
 elif choice == "Caixa":
     box_title("Relatório de Vendas do Dia", "📊")
 
-    # Filtra apenas vendas válidas (instâncias de Venda)
-    vendas_validas = [v for v in st.session_state["vendas"] if isinstance(v, Venda)]
+    if st.session_state["vendas"]:
+        df_vendas = pd.DataFrame(st.session_state["vendas"],
+                                 columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Fun]()
 
-    if vendas_validas:
-        # Cria DataFrame com todas vendas
-        df_vendas = pd.DataFrame(
-            [[v.codigo, v.item, v.quantidade, v.valor_unitario, v.total, v.funcionario, v.data_hora] 
-             for v in vendas_validas],
-            columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora"]
-        )
 
-        # Converte Data/Hora e Total para tipos corretos
-        df_vendas["Data/Hora"] = pd.to_datetime(df_vendas["Data/Hora"], errors="coerce")
-        df_vendas["Total"] = pd.to_numeric(df_vendas["Total"], errors="coerce")
-
-        # Filtra apenas vendas do dia atual
-        hoje = datetime.now().date()
-        df_vendas_dia = df_vendas[df_vendas["Data/Hora"].dt.date == hoje]
-
-        if not df_vendas_dia.empty:
-            st.dataframe(df_vendas_dia[["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora"]])
-            
-            # Calcula total do dia
-            total_dia = df_vendas_dia["Total"].sum()
-            st.markdown("### TOTAL DO DIA")
-            st.table(pd.DataFrame([["", "", "", "", round(float(total_dia), 2), "", ""]],
-                                  columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora"]))
-        else:
-            st.info("Nenhuma venda registrada hoje.")
-    else:
-        st.info("Nenhuma venda registrada ainda.")
 
 
