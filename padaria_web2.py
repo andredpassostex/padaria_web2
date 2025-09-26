@@ -72,13 +72,28 @@ def box_title(texto, icone="📌"):
 
 # ================= Funções de negócio =================
 def cadastrar_produto(nome, qtd, preco):
-    if not nome.strip():
+    if not nome or str(nome).strip() == "":
         st.error("Nome do produto inválido.")
         return
+
+    nome = nome.title().strip()
+    qtd = int(qtd)
+    preco = float(preco)
+
+    # Verifica se o produto já existe
+    for p in st.session_state["produtos"]:
+        if p.nome == nome:
+            p.qtd += qtd            # Soma a quantidade
+            p.preco = preco         # Atualiza o preço para o novo valor
+            st.success(f"Produto '{nome}' atualizado: +{qtd} unidades, preço atualizado para R$ {preco:.2f}.")
+            return
+
+    # Se não existir, cria novo produto
     codigo = str(st.session_state["codigo_produto"]).zfill(3)
-    st.session_state["produtos"].append(Produto(codigo, nome, int(qtd), float(preco)))
+    st.session_state["produtos"].append(Produto(codigo, nome, qtd, preco))
     st.session_state["codigo_produto"] += 1
-    st.success(f"Produto '{nome}' cadastrado com código {codigo}.")
+    st.success(f"Produto '{nome}' cadastrado com có
+
 
 def cadastrar_funcionario(nome):
     nome = nome.strip().title()
@@ -381,3 +396,4 @@ if st.session_state["tela_selecionada"]=="Dashboard":
     dashboard()
 else:
     tela_funcional()
+
