@@ -1,4 +1,4 @@
-# padaria_web_final_streamlit.py
+# padaria_streamlit_modal.py
 import os
 import streamlit as st
 import pandas as pd
@@ -17,7 +17,7 @@ class Funcionario:
     def __init__(self, nome):
         self.nome = nome.title().strip()
 
-# ================= Inicialização do estado =================
+# ================= Inicialização =================
 if "produtos" not in st.session_state:
     st.session_state["produtos"] = []
 
@@ -150,6 +150,7 @@ elif choice == "Estoque":
 # ================= Venda =================
 elif choice == "Venda":
     box_title("Registrar Venda", "💰")
+    
     if not st.session_state["produtos"] or not st.session_state["funcionarios"]:
         st.info("Cadastre produtos e funcionários antes de registrar vendas.")
     else:
@@ -157,11 +158,12 @@ elif choice == "Venda":
             produtos_display = [f"{p.codigo} - {p.nome}" for p in st.session_state["produtos"]]
             prod_sel = st.selectbox("Produto", produtos_display)
             produto_obj = next(p for p in st.session_state["produtos"] if p.codigo == prod_sel.split(" - ")[0])
+            
             func_sel = st.selectbox("Funcionário", [f.nome for f in st.session_state["funcionarios"]])
             qtd_venda = st.number_input("Quantidade", min_value=1, step=1)
             submit_venda = st.form_submit_button("Registrar Venda")
-
-        # --- REGISTRO DA VENDA (fora do form para permitir popup OK) ---
+        
+        # Registro da venda
         if submit_venda:
             if qtd_venda > produto_obj.qtd:
                 st.error("Quantidade insuficiente no estoque!")
@@ -179,16 +181,12 @@ elif choice == "Venda":
                     data_hora
                 ])
                 st.success(f"Venda de {qtd_venda}x {produto_obj.nome} registrada por {func_sel}!")
-
-        # --- ALERTA ESTOQUE BAIXO COM OK (fora do form) ---
-        key_popup = f"popup_{produto_obj.codigo}"
-        if produto_obj.qtd <= 5:
-            if key_popup not in st.session_state:
-                st.session_state[key_popup] = True
-            if st.session_state[key_popup]:
-                st.warning(f"⚠ Restam apenas {produto_obj.qtd} itens de {produto_obj.nome} em estoque!")
-                if st.button("OK", key=f"ok_{produto_obj.codigo}"):
-                    st.session_state[key_popup] = False
+                
+                # Modal estoque baixo
+                if produto_obj.qtd <= 5:
+                    with st.modal(f"modal_{produto_obj.codigo}", title="⚠ Estoque Baixo"):
+                        st.write(f"Restam apenas {produto_obj.qtd} itens de {produto_obj.nome} em estoque!")
+                        st.button("OK")  # fecha o modal
 
 # ================= Caixa =================
 elif choice == "Caixa":
