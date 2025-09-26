@@ -326,7 +326,8 @@ def tela_login():
 
     st.markdown("---")
     st.subheader("Cadastrar Novo Usuário")
-    nome senha = st.text_input("Senha", type="password", key="senha_cadastro")
+    nome =  st.text_input("Usuário (novo cadastro)")
+    senha = st.text_input("Senha", type="password", key="senha_cadastro")
     perfil = st.selectbox("Perfil", ["Gerente", "Vendedor"])
     if st.button("Cadastrar Usuário"):
         cadastrar_usuario(nome, senha, perfil)
@@ -354,3 +355,4 @@ def main():
 # ================= Run =================
 if __name__=="__main__":
     main()
+
