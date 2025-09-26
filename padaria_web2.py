@@ -162,7 +162,20 @@ def tela_funcional():
                 st.table(df)
             else:
                 st.info("Nenhum produto cadastrado")
-
+# ================= Caixa / Relatórios =================
+elif tela=="Caixa":
+    if submenu=="Relatório Diário":
+        box_title("Relatório Diário")
+        # filtrar vendas do dia e exibir
+    elif submenu=="Relatório Semanal":
+        box_title("Relatório Semanal")
+        # filtrar vendas da semana e exibir
+    elif submenu=="Relatório Mensal":
+        box_title("Relatório Mensal")
+        # filtrar vendas do mês e exibir
+    else:
+        box_title("Caixa")
+        # mostrar total do caixa, etc.
     # ================= Funcionários =================
     elif tela=="Funcionários":
         if submenu=="Cadastrar Funcionário":
@@ -278,6 +291,7 @@ menu_expansivo = {
     "Funcionários":["Cadastrar Funcionário","Funcionários","Remover Funcionário"],
     "Clientes":["Histórico","Conta"],
     "Fornecedores":["Cadastrar Fornecedor","Fornecedores"]
+"Caixa": ["Relatório Diário", "Relatório Semanal", "Relatório Mensal"]
 }
 
 st.sidebar.header("📌 Menu")
@@ -299,6 +313,7 @@ if st.session_state["tela_selecionada"]=="Dashboard":
     dashboard()
 else:
     tela_funcional()
+
 
 
 
