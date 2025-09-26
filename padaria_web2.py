@@ -1,4 +1,4 @@
-# padaria_web_pro.py
+# padaria_web_final.py
 import os
 import streamlit as st
 import pandas as pd
@@ -6,7 +6,6 @@ from datetime import datetime
 from PIL import Image
 
 # ================= Classes =================
-
 class Produto:
     def __init__(self, codigo, nome, qtd, preco):
         self.codigo = codigo
@@ -87,11 +86,30 @@ st.sidebar.header("📌 Menu")
 menu = ["Dashboard", "Funcionários", "Estoque", "Venda", "Caixa"]
 choice = st.sidebar.radio("Navegação", menu)
 
+# ================= Normaliza vendas antigas =================
+vendas_corrigidas = []
+for v in st.session_state["vendas"]:
+    if isinstance(v, Venda):
+        vendas_corrigidas.append(v)
+    elif isinstance(v, list) and len(v) == 7:
+        # [codigo, item, qtd, valor_unit, total, funcionario, data_hora]
+        try:
+            produto_temp = Produto(v[0], v[1], v[2], v[3])
+            funcionario_temp = Funcionario(v[5])
+            obj = Venda(produto_temp, funcionario_temp, v[2])
+            obj.total = v[4]
+            if isinstance(v[6], datetime):
+                obj.data_hora = v[6]
+            vendas_corrigidas.append(obj)
+        except:
+            continue
+st.session_state["vendas"] = vendas_corrigidas
+
 # ================= Dashboard =================
 if choice == "Dashboard":
     box_title("📊 Dashboard")
-    total_caixa = round(sum(v.total for v in st.session_state["vendas"]),2)
-    vendas_hoje = [v for v in st.session_state["vendas"] if v.data_hora.date() == datetime.now().date()]
+    total_caixa = round(sum(v.total for v in st.session_state["vendas"] if isinstance(v, Venda)), 2)
+    vendas_hoje = [v for v in st.session_state["vendas"] if isinstance(v, Venda) and v.data_hora.date() == datetime.now().date()]
     produtos_baixos = [p for p in st.session_state["produtos"] if p.qtd <=5]
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Caixa", f"R$ {total_caixa:.2f}")
@@ -191,15 +209,12 @@ elif choice == "Venda":
 # ================= Caixa =================
 elif choice == "Caixa":
     box_title("Relatório de Vendas do Dia", "📊")
-    if st.session_state["vendas"]:
-        vendas_dia = [v for v in st.session_state["vendas"] if v.data_hora.date() == datetime.now().date()]
-        if vendas_dia:
-            df = pd.DataFrame([[v.item,v.quantidade,v.valor_unitario,v.total,v.funcionario] for v in vendas_dia],
-                              columns=["Item","Quantidade","Valor Unitário","Total","Funcionário"])
-            st.dataframe(df)
-            total_dia = sum(v.total for v in vendas_dia)
-            st.markdown(f"### TOTAL DO DIA: R$ {total_dia:.2f}")
-        else:
-            st.info("Nenhuma venda registrada hoje.")
+    vendas_dia = [v for v in st.session_state["vendas"] if isinstance(v, Venda) and v.data_hora.date() == datetime.now().date()]
+    if vendas_dia:
+        df = pd.DataFrame([[v.item,v.quantidade,v.valor_unitario,v.total,v.funcionario] for v in vendas_dia],
+                          columns=["Item","Quantidade","Valor Unitário","Total","Funcionário"])
+        st.dataframe(df)
+        total_dia = sum(v.total for v in vendas_dia)
+        st.markdown(f"### TOTAL DO DIA: R$ {total_dia:.2f}")
     else:
-        st.info("Nenhuma venda registrada ainda.")
+        st.info("Nenhuma venda registrada hoje.")
