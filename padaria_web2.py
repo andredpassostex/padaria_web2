@@ -150,37 +150,68 @@ def dashboard():
     total_caixa = sum(v[4] for v in st.session_state["vendas"] if v[5] == "imediata")
     display_valor = f"R$ {total_caixa:.2f}" if st.session_state["mostrar_caixa"] else "R$ ****"
 
-    vendas_hoje = [v for v in st.session_state["vendas"] if v[5] == "imediata" and v[6].date() == datetime.now().date()]
+    vendas_hoje = [
+        v for v in st.session_state["vendas"]
+        if v[5] == "imediata" and v[6].date() == datetime.now().date()
+    ]
+
     produtos_baixos = [p for p in st.session_state["produtos"] if p.qtd <= p.estoque_min]
-    clientes_conta = [c for c in st.session_state["clientes"] if sum(x[2] for x in c.historico if x[5] == "reserva") > 0]
-    total_contas = sum(sum(x[2] for x in c.historico if x[5] == "reserva") for c in clientes_conta)
 
-    display_conta = f"R$ {total_contas:.2f}" if st.session_state["mostrar_contas"] else "R$ ****"
+    clientes_conta = [
+        c for c in st.session_state["clientes"]
+        if sum(x[2] for x in c.historico if x[5] == "reserva") > 0
+    ]
+    total_contas = sum(
+        sum(x[2] for x in c.historico if x[5] == "reserva") for c in clientes_conta
+    )
 
+    # Layout dos cards
     col1, col2, col3, col4 = st.columns(4)
 
-    # Card estilizado
-    def card(col, titulo, valor, cor, toggle_key=None, toggle_state=None):
-        with col:
-            st.markdown(
-                f"""
-                <div style="background-color:{cor}; padding:18px; border-radius:12px; 
-                            box-shadow:2px 2px 10px rgba(0,0,0,0.15); text-align:center; color:white;">
-                    <h4 style="margin:0;">{titulo}</h4>
-                    <p style="font-size:22px; font-weight:bold; margin:8px 0;">{valor}</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-            if toggle_key:
-                if st.button("👁️", key=toggle_key):
-                    st.session_state[toggle_state] = not st.session_state[toggle_state]
+    # Caixa
+    with col1:
+        st.markdown("""
+            <div style='background-color:#4CAF50;padding:15px;border-radius:10px;color:white;text-align:center;'>
+                <h4>💰 Caixa</h4>
+                <h2>{}</h2>
+            </div>
+        """.format(display_valor), unsafe_allow_html=True)
+        if st.button("👁️", key="btn_caixa"):
+            st.session_state["mostrar_caixa"] = not st.session_state["mostrar_caixa"]
 
-    # Cards
-    card(col1, "💰 Total Caixa", display_valor, "#27ae60", "btn_caixa", "mostrar_caixa")
-    card(col2, "🛒 Vendas Hoje", len(vendas_hoje), "#2980b9")
-    card(col3, "⚠️ Produtos Baixos", len(produtos_baixos), "#e67e22")
-    card(col4, "📂 Clientes com Conta", display_conta, "#c0392b", "btn_conta", "mostrar_contas")
+    # Vendas Hoje
+    with col2:
+        st.markdown("""
+            <div style='background-color:#2196F3;padding:15px;border-radius:10px;color:white;text-align:center;'>
+                <h4>🛒 Vendas Hoje</h4>
+                <h2>{}</h2>
+            </div>
+        """.format(len(vendas_hoje)), unsafe_allow_html=True)
+
+    # Produtos Baixos
+    with col3:
+        if produtos_baixos:
+            lista = "<br>".join([f"{p.nome} ({p.qtd})" for p in produtos_baixos])
+        else:
+            lista = "✅ OK"
+        st.markdown("""
+            <div style='background-color:#FF9800;padding:15px;border-radius:10px;color:white;text-align:center;'>
+                <h4>📦 Produtos Baixos</h4>
+                <p>{}</p>
+            </div>
+        """.format(lista), unsafe_allow_html=True)
+
+    # Contas em Aberto
+    display_conta = f"R$ {total_contas:.2f}" if st.session_state["mostrar_contas"] else "R$ ****"
+    with col4:
+        st.markdown("""
+            <div style='background-color:#F44336;padding:15px;border-radius:10px;color:white;text-align:center;'>
+                <h4>👥 Contas em Aberto</h4>
+                <h2>{}</h2>
+            </div>
+        """.format(display_conta), unsafe_allow_html=True)
+        if st.button("👁️", key="btn_conta"):
+            st.session_state["mostrar_contas"] = not st.session_state["mostrar_contas"]
 
 
 # ================= Função principal de telas =================
@@ -393,4 +424,5 @@ if st.session_state["tela_selecionada"] == "Dashboard":
     dashboard()
 else:
     tela_funcional()
+
 
