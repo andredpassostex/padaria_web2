@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from PIL import Image
 
 # --- Inicialização ---
 if "produtos" not in st.session_state:
@@ -85,7 +86,18 @@ def registrar_venda(produto_nome, funcionario, venda_qtd):
 
 
 # --- Interface ---
-st.title("🥖 Lucio Pães - Sistema de Padaria")
+# Banner com logo
+logo = Image.open("logo.png")
+st.image(logo, use_column_width=False, width=250)
+
+st.markdown(
+    """
+    <h2 style='text-align: center; color: #4B2E2E;'>
+        Sistema de Padaria
+    </h2>
+    """,
+    unsafe_allow_html=True
+)
 
 st.sidebar.header("📌 Menu")
 menu = ["Funcionários", "Estoque", "Venda", "Caixa"]
@@ -179,8 +191,10 @@ elif choice == "Caixa":
             st.table(df_vendas_dia[["Item", "Quantidade", "Valor Unitário", "Total"]])
 
             total_dia = df_vendas_dia[["Quantidade", "Valor Unitário", "Total"]].sum(numeric_only=True)
-            total_df = pd.DataFrame([["TOTAL DO DIA", total_dia["Quantidade"], total_dia["Valor Unitário"], total_dia["Total"]]],
-                                    columns=["Item", "Quantidade", "Valor Unitário", "Total"])
+            total_df = pd.DataFrame(
+                [["TOTAL DO DIA", total_dia["Quantidade"], total_dia["Valor Unitário"], total_dia["Total"]]],
+                columns=["Item", "Quantidade", "Valor Unitário", "Total"],
+            )
             st.table(total_df)
         else:
             st.info("Nenhuma venda registrada hoje.")
