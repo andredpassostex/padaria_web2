@@ -179,14 +179,20 @@ elif menu == "Caixa":
     st.subheader("Relatório de Vendas do Dia")
 
     if st.session_state['vendas']:
-        df_vendas = pd.DataFrame(
-            st.session_state['vendas'],
-            columns=["Produto", "Quantidade", "Preço Unitário", "Funcionário", "Data/Hora"],
-        )
-        df_vendas["Total"] = df_vendas["Quantidade"] * df_vendas["Preço Unitário"]
+      df_vendas = pd.DataFrame(
+    st.session_state['vendas'],
+    columns=["Produto", "Quantidade", "Preço Unitário", "Funcionário", "Data/Hora"],
+)
 
-        hoje = datetime.now().date()
-        df_vendas_dia = df_vendas[df_vendas["Data/Hora"].dt.date == hoje]
+# Converte "Data/Hora" de string para datetime
+df_vendas["Data/Hora"] = pd.to_datetime(df_vendas["Data/Hora"], errors="coerce")
+
+# Calcula o total por venda
+df_vendas["Total"] = df_vendas["Quantidade"] * df_vendas["Preço Unitário"]
+
+hoje = datetime.now().date()
+df_vendas_dia = df_vendas[df_vendas["Data/Hora"].dt.date == hoje]
+
 
         if not df_vendas_dia.empty:
             st.table(df_vendas_dia[["Produto", "Quantidade", "Preço Unitário", "Total"]])
@@ -204,3 +210,4 @@ elif menu == "Caixa":
         gerar_relatorio("diario")
     if st.button("Relatório Semanal"):
         gerar_relatorio("semanal")
+
