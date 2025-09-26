@@ -1,4 +1,4 @@
-# padaria_streamlit_modal.py
+# padaria_streamlit_final.py
 import os
 import streamlit as st
 import pandas as pd
@@ -7,28 +7,26 @@ from PIL import Image
 
 # ================= Classes =================
 class Produto:
-    def __init__(self, codigo, nome, qtd, preco):
+    def __init__(self, codigo, nome, qtd, preco, estoque_min=5):
         self.codigo = codigo
         self.nome = nome
         self.qtd = qtd
         self.preco = preco
+        self.estoque_min = estoque_min  # novo: quantidade mínima para alerta
 
 class Funcionario:
     def __init__(self, nome):
         self.nome = nome.title().strip()
 
+class Cliente:
+    def __init__(self, nome):
+        self.nome = nome.title().strip()
+        self.historico_compras = []
+
 # ================= Inicialização =================
-if "produtos" not in st.session_state:
-    st.session_state["produtos"] = []
-
-if "funcionarios" not in st.session_state:
-    st.session_state["funcionarios"] = []
-
-if "vendas" not in st.session_state:
-    st.session_state["vendas"] = []
-
-if "codigo_produto" not in st.session_state:
-    st.session_state["codigo_produto"] = 1
+for key, default in [("produtos", []), ("funcionarios", []), ("vendas", []), ("clientes", []), ("codigo_produto", 1)]:
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 # ================= Funções =================
 def box_title(texto, icone="📌"):
@@ -70,7 +68,7 @@ else:
 
 # ================= Menu lateral =================
 st.sidebar.header("📌 Menu")
-menu = ["Dashboard", "Funcionários", "Estoque", "Venda", "Caixa"]
+menu = ["Dashboard", "Funcionários", "Clientes", "Estoque", "Venda", "Caixa"]
 choice = st.sidebar.radio("Navegação", menu)
 
 # ================= Dashboard =================
@@ -78,7 +76,7 @@ if choice == "Dashboard":
     box_title("📊 Dashboard")
     total_caixa = round(sum(v[4] for v in st.session_state["vendas"]),2)
     vendas_hoje = [v for v in st.session_state["vendas"] if v[6].date() == datetime.now().date()]
-    produtos_baixos = [p for p in st.session_state["produtos"] if p.qtd <=5]
+    produtos_baixos = [p for p in st.session_state["produtos"] if p.qtd <= p.estoque_min]
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Caixa", f"R$ {total_caixa:.2f}")
     col2.metric("Vendas Hoje", len(vendas_hoje))
@@ -107,12 +105,33 @@ elif choice == "Funcionários":
                 st.session_state["funcionarios"].append(Funcionario(nome_func))
                 st.success(f"Funcionário {nome_func} cadastrado com sucesso!")
 
+# ================= Clientes =================
+elif choice == "Clientes":
+    box_title("Clientes Cadastrados", "🧑‍🤝‍🧑")
+    if st.session_state["clientes"]:
+        for c in st.session_state["clientes"]:
+            st.write(c.nome)
+    else:
+        st.info("Nenhum cliente cadastrado.")
+    box_title("Cadastrar Cliente", "➕")
+    with st.form("form_cliente"):
+        nome_cliente = st.text_input("Nome do cliente")
+        submit_cliente = st.form_submit_button("Cadastrar Cliente")
+        if submit_cliente:
+            if nome_cliente.strip() == "":
+                st.error("Digite o nome do cliente.")
+            elif nome_cliente.lower() in [c.nome.lower() for c in st.session_state["clientes"]]:
+                st.warning(f"Cliente {nome_cliente} já cadastrado!")
+            else:
+                st.session_state["clientes"].append(Cliente(nome_cliente))
+                st.success(f"Cliente {nome_cliente} cadastrado com sucesso!")
+
 # ================= Estoque =================
 elif choice == "Estoque":
     box_title("Produtos Cadastrados", "📦")
     if st.session_state["produtos"]:
-        df_estoque = pd.DataFrame([[p.codigo,p.nome,p.qtd,p.preco] for p in st.session_state["produtos"]],
-                                   columns=["Código","Produto","Quantidade","Preço Unitário"])
+        df_estoque = pd.DataFrame([[p.codigo,p.nome,p.qtd,p.preco,p.estoque_min] for p in st.session_state["produtos"]],
+                                   columns=["Código","Produto","Quantidade","Preço Unitário","Estoque Mínimo"])
         st.dataframe(df_estoque)
     else:
         st.info("Nenhum produto cadastrado.")
@@ -122,6 +141,7 @@ elif choice == "Estoque":
         nome_prod = st.text_input("Nome do produto")
         qtd_prod = st.number_input("Quantidade inicial", min_value=1, step=1)
         preco_prod = st.number_input("Preço unitário", min_value=0.01, step=0.01, format="%.2f")
+        estoque_min = st.number_input("Estoque mínimo para alerta", min_value=1, step=1, value=5)
         submit_prod = st.form_submit_button("Cadastrar Produto")
         if submit_prod:
             if nome_prod.strip() == "":
@@ -129,7 +149,7 @@ elif choice == "Estoque":
             else:
                 codigo = str(st.session_state["codigo_produto"]).zfill(3)
                 st.session_state["codigo_produto"] += 1
-                st.session_state["produtos"].append(Produto(codigo, nome_prod, qtd_prod, preco_prod))
+                st.session_state["produtos"].append(Produto(codigo, nome_prod, qtd_prod, preco_prod, estoque_min))
                 st.success(f"Produto {codigo} - {nome_prod} cadastrado com sucesso!")
 
     box_title("Gerenciar Estoque", "⚙️")
@@ -160,6 +180,11 @@ elif choice == "Venda":
             produto_obj = next(p for p in st.session_state["produtos"] if p.codigo == prod_sel.split(" - ")[0])
             
             func_sel = st.selectbox("Funcionário", [f.nome for f in st.session_state["funcionarios"]])
+            if st.session_state["clientes"]:
+                cliente_sel = st.selectbox("Cliente (opcional)", ["Nenhum"] + [c.nome for c in st.session_state["clientes"]])
+            else:
+                cliente_sel = "Nenhum"
+
             qtd_venda = st.number_input("Quantidade", min_value=1, step=1)
             submit_venda = st.form_submit_button("Registrar Venda")
         
@@ -178,33 +203,42 @@ elif choice == "Venda":
                     produto_obj.preco,
                     total_venda,
                     func_sel,
-                    data_hora
+                    data_hora,
+                    cliente_sel
                 ])
-                st.success(f"Venda de {qtd_venda}x {produto_obj.nome} registrada por {func_sel}!")
+                if cliente_sel != "Nenhum":
+                    cliente_obj = next(c for c in st.session_state["clientes"] if c.nome == cliente_sel)
+                    cliente_obj.historico_compras.append((produto_obj.nome, qtd_venda, total_venda, data_hora))
                 
-                # Modal estoque baixo
-                if produto_obj.qtd <= 5:
-                    with st.modal(f"modal_{produto_obj.codigo}", title="⚠ Estoque Baixo"):
-                        st.write(f"Restam apenas {produto_obj.qtd} itens de {produto_obj.nome} em estoque!")
-                        st.button("OK")  # fecha o modal
+                st.success(f"Venda de {qtd_venda}x {produto_obj.nome} registrada por {func_sel}!")
+
+                # Alerta de estoque baixo (simulando modal)
+                key_popup = f"popup_{produto_obj.codigo}"
+                if produto_obj.qtd <= produto_obj.estoque_min:
+                    if key_popup not in st.session_state:
+                        st.session_state[key_popup] = True
+                    if st.session_state[key_popup]:
+                        st.warning(f"⚠ Restam apenas {produto_obj.qtd} itens de {produto_obj.nome} em estoque!")
+                        if st.button("OK", key=f"ok_{produto_obj.codigo}"):
+                            st.session_state[key_popup] = False
 
 # ================= Caixa =================
 elif choice == "Caixa":
     box_title("Relatório de Vendas do Dia", "📊")
     if st.session_state["vendas"]:
         df_vendas = pd.DataFrame(st.session_state["vendas"],
-                                 columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora"])
+                                 columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora", "Cliente"])
         df_vendas["Data/Hora"] = pd.to_datetime(df_vendas["Data/Hora"], errors="coerce")
         df_vendas["Total"] = pd.to_numeric(df_vendas["Total"], errors="coerce")
         hoje = datetime.now().date()
         df_vendas_dia = df_vendas[df_vendas["Data/Hora"].dt.date == hoje]
 
         if not df_vendas_dia.empty:
-            st.dataframe(df_vendas_dia[["Código","Item","Quantidade","Valor Unitário","Total","Funcionário","Data/Hora"]])
+            st.dataframe(df_vendas_dia[["Código","Item","Quantidade","Valor Unitário","Total","Funcionário","Cliente","Data/Hora"]])
             total_dia = df_vendas_dia["Total"].sum()
             st.markdown("### TOTAL DO DIA")
-            st.table(pd.DataFrame([["","","","","{:.2f}".format(total_dia),"",""]],
-                                  columns=["Código","Item","Quantidade","Valor Unitário","Total","Funcionário","Data/Hora"]))
+            st.table(pd.DataFrame([["","","","","{:.2f}".format(total_dia),"","",""]],
+                                  columns=["Código","Item","Quantidade","Valor Unitário","Total","Funcionário","Cliente","Data/Hora"]))
         else:
             st.info("Nenhuma venda registrada hoje.")
     else:
