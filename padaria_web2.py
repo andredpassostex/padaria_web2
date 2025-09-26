@@ -65,10 +65,11 @@ def box_title(texto, icone="📌"):
     st.markdown(f"""
         <div style='padding: 10px; background-color: #f9f9f9;
                     border-radius: 10px; box-shadow: 2px 2px 8px rgba(0,0,0,0.12);
-                    margin-bottom: 12px;'>{}
+                    margin-bottom: 12px;'>
             <h3 style='text-align:center; color:#4B2E2E; margin:6px 0;'>{icone} {texto}</h3>
         </div>
     """, unsafe_allow_html=True)
+
 
 # ================= Funções de negócio =================
 def cadastrar_produto(nome, qtd, preco):
@@ -386,3 +387,4 @@ if st.session_state["tela_selecionada"] == "Dashboard":
     dashboard()
 else:
     tela_funcional()
+
