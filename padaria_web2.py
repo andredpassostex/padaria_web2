@@ -25,7 +25,7 @@ def cadastrar_produto(nome, qtd, preco):
                               if p[0].lower() == nome.lower()), None)
     if produto_existente:
         produto_existente[1] += qtd
-        produto_existente[2] = preco  # Atualiza preço se necessário
+        produto_existente[2] = preco
         st.success(f"Produto {nome} atualizado: estoque +{qtd} unidades.")
     else:
         st.session_state['produtos'].append([nome, qtd, preco])
@@ -33,7 +33,6 @@ def cadastrar_produto(nome, qtd, preco):
 
 
 def cadastrar_funcionario(nome):
-    # Verifica se o funcionário já existe
     if nome.lower() in [f.lower() for f in st.session_state['funcionarios']]:
         st.warning(f"Funcionário {nome} já cadastrado!")
     else:
@@ -91,7 +90,6 @@ def gerar_relatorio(periodo="diario"):
         st.info(f"Nenhuma venda registrada no período {periodo}.")
         return
 
-    # Criar arquivo Excel em memória
     output = io.BytesIO()
     df_periodo.to_excel(output, index=False)
     output.seek(0)
@@ -107,41 +105,40 @@ def gerar_relatorio(periodo="diario"):
 # --- Interface ---
 st.title("Lucio Pães")
 
-# Menu fixo com sub-botões
-st.sidebar.header("Menu")
+menu = st.sidebar.radio("Menu", ["Funcionários", "Estoque", "Venda", "Caixa"])
 
 # Funcionários
-if st.sidebar.button("Funcionários"):
-    with st.expander("Opções Funcionários"):
-        if st.button("Cadastro de Funcionários"):
-            st.subheader("Cadastrar Funcionário")
-            nome = st.text_input("Nome do funcionário")
-            if st.button("Cadastrar Funcionário"):
-                cadastrar_funcionario(nome)
+if menu == "Funcionários":
+    st.subheader("Cadastro de Funcionário")
+    nome = st.text_input("Nome do funcionário")
+    if st.button("Cadastrar Funcionário"):
+        cadastrar_funcionario(nome)
 
-        if st.button("Funcionários Cadastrados"):
-            st.subheader("Lista de Funcionários")
-            for f in st.session_state['funcionarios']:
-                st.write(f)
+    st.subheader("Funcionários Cadastrados")
+    if st.session_state['funcionarios']:
+        for f in st.session_state['funcionarios']:
+            st.write(f)
+    else:
+        st.info("Nenhum funcionário cadastrado.")
 
 # Estoque
-if st.sidebar.button("Estoque"):
-    with st.expander("Opções Estoque"):
-        if st.button("Produtos Cadastrados"):
-            st.subheader("Produtos")
-            for p in st.session_state['produtos']:
-                st.write(f"{p[0]} - Estoque: {p[1]} - R${p[2]:.2f}")
+elif menu == "Estoque":
+    st.subheader("Cadastro de Produto")
+    nome = st.text_input("Nome do produto")
+    qtd = st.number_input("Quantidade inicial", min_value=1, step=1)
+    preco = st.number_input("Preço unitário", min_value=0.01, step=0.01)
+    if st.button("Cadastrar Produto"):
+        cadastrar_produto(nome, qtd, preco)
 
-        if st.button("Cadastro de Produtos"):
-            st.subheader("Cadastrar Produto")
-            nome = st.text_input("Nome do produto")
-            qtd = st.number_input("Quantidade inicial", min_value=1, step=1)
-            preco = st.number_input("Preço unitário", min_value=0.01, step=0.01)
-            if st.button("Cadastrar Produto"):
-                cadastrar_produto(nome, qtd, preco)
+    st.subheader("Produtos em Estoque")
+    if st.session_state['produtos']:
+        for p in st.session_state['produtos']:
+            st.write(f"{p[0]} - Estoque: {p[1]} - R${p[2]:.2f}")
+    else:
+        st.info("Nenhum produto cadastrado.")
 
 # Venda
-if st.sidebar.button("Venda"):
+elif menu == "Venda":
     st.subheader("Registrar Venda")
     if not st.session_state['produtos'] or not st.session_state['funcionarios']:
         st.info("Cadastre produtos e funcionários antes de registrar vendas.")
@@ -153,7 +150,7 @@ if st.sidebar.button("Venda"):
             registrar_venda(prod_nome, func_nome, qtd_venda)
 
 # Caixa
-if st.sidebar.button("Caixa"):
+elif menu == "Caixa":
     st.subheader("Caixa Total")
     st.write(f"R${st.session_state['caixa_total']:.2f}")
 
