@@ -1,4 +1,4 @@
-# padaria_streamlit_final.py
+# padaria_streamlit_cliente_conta.py
 import os
 import streamlit as st
 import pandas as pd
@@ -12,7 +12,7 @@ class Produto:
         self.nome = nome
         self.qtd = qtd
         self.preco = preco
-        self.estoque_min = estoque_min  # novo: quantidade mínima para alerta
+        self.estoque_min = estoque_min
 
 class Funcionario:
     def __init__(self, nome):
@@ -21,7 +21,7 @@ class Funcionario:
 class Cliente:
     def __init__(self, nome):
         self.nome = nome.title().strip()
-        self.historico_compras = []
+        self.historico_compras = []  # cada item: [produto, qtd, total, data_hora, funcionario]
 
 # ================= Inicialização =================
 for key, default in [("produtos", []), ("funcionarios", []), ("vendas", []), ("clientes", []), ("codigo_produto", 1)]:
@@ -110,7 +110,11 @@ elif choice == "Clientes":
     box_title("Clientes Cadastrados", "🧑‍🤝‍🧑")
     if st.session_state["clientes"]:
         for c in st.session_state["clientes"]:
-            st.write(c.nome)
+            st.write(f"{c.nome} — Total acumulado: R$ {sum(x[2] for x in c.historico_compras):.2f}")
+            if c.historico_compras:
+                if st.button(f"Zerar conta de {c.nome}", key=f"zerar_{c.nome}"):
+                    c.historico_compras.clear()
+                    st.success(f"Conta de {c.nome} zerada.")
     else:
         st.info("Nenhum cliente cadastrado.")
     box_title("Cadastrar Cliente", "➕")
@@ -188,7 +192,6 @@ elif choice == "Venda":
             qtd_venda = st.number_input("Quantidade", min_value=1, step=1)
             submit_venda = st.form_submit_button("Registrar Venda")
         
-        # Registro da venda
         if submit_venda:
             if qtd_venda > produto_obj.qtd:
                 st.error("Quantidade insuficiente no estoque!")
@@ -196,23 +199,45 @@ elif choice == "Venda":
                 produto_obj.qtd -= qtd_venda
                 data_hora = datetime.now()
                 total_venda = produto_obj.preco * qtd_venda
-                st.session_state["vendas"].append([
-                    produto_obj.codigo,
-                    produto_obj.nome,
-                    qtd_venda,
-                    produto_obj.preco,
-                    total_venda,
-                    func_sel,
-                    data_hora,
-                    cliente_sel
-                ])
+                
+                # Atualiza linha de venda existente para mesmo produto e cliente
+                venda_existente = None
+                if cliente_sel != "Nenhum":
+                    for v in st.session_state["vendas"]:
+                        if v[0] == produto_obj.codigo and v[7] == cliente_sel:
+                            venda_existente = v
+                            break
+                else:
+                    for v in st.session_state["vendas"]:
+                        if v[0] == produto_obj.codigo and v[7] == "Nenhum":
+                            venda_existente = v
+                            break
+                
+                if venda_existente:
+                    venda_existente[2] += qtd_venda
+                    venda_existente[4] += total_venda
+                    venda_existente[6] = data_hora
+                    venda_existente[5] = func_sel
+                else:
+                    st.session_state["vendas"].append([
+                        produto_obj.codigo,
+                        produto_obj.nome,
+                        qtd_venda,
+                        produto_obj.preco,
+                        total_venda,
+                        func_sel,
+                        data_hora,
+                        cliente_sel
+                    ])
+                
+                # Atualiza histórico do cliente
                 if cliente_sel != "Nenhum":
                     cliente_obj = next(c for c in st.session_state["clientes"] if c.nome == cliente_sel)
-                    cliente_obj.historico_compras.append((produto_obj.nome, qtd_venda, total_venda, data_hora))
+                    cliente_obj.historico_compras.append([produto_obj.nome, qtd_venda, total_venda, data_hora, func_sel])
                 
-                st.success(f"Venda de {qtd_venda}x {produto_obj.nome} registrada por {func_sel}!")
+                st.success(f"Venda de {qtd_venda}x {produto_obj.nome} registrada por {func_sel} para {cliente_sel}!")
 
-                # Alerta de estoque baixo (simulando modal)
+                # Alerta de estoque baixo
                 key_popup = f"popup_{produto_obj.codigo}"
                 if produto_obj.qtd <= produto_obj.estoque_min:
                     if key_popup not in st.session_state:
@@ -227,7 +252,7 @@ elif choice == "Caixa":
     box_title("Relatório de Vendas do Dia", "📊")
     if st.session_state["vendas"]:
         df_vendas = pd.DataFrame(st.session_state["vendas"],
-                                 columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora", "Cliente"])
+                                 columns=["Código","Item","Quantidade","Valor Unitário","Total","Funcionário","Data/Hora","Cliente"])
         df_vendas["Data/Hora"] = pd.to_datetime(df_vendas["Data/Hora"], errors="coerce")
         df_vendas["Total"] = pd.to_numeric(df_vendas["Total"], errors="coerce")
         hoje = datetime.now().date()
