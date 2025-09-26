@@ -146,23 +146,42 @@ def registrar_venda(produto, funcionario, cliente, quantidade, tipo="imediata"):
 def dashboard():
     mostrar_logo(600)
     box_title("📊 Dashboard")
+
     total_caixa = sum(v[4] for v in st.session_state["vendas"] if v[5] == "imediata")
     display_valor = f"R$ {total_caixa:.2f}" if st.session_state["mostrar_caixa"] else "R$ ****"
+
     vendas_hoje = [v for v in st.session_state["vendas"] if v[5] == "imediata" and v[6].date() == datetime.now().date()]
     produtos_baixos = [p for p in st.session_state["produtos"] if p.qtd <= p.estoque_min]
     clientes_conta = [c for c in st.session_state["clientes"] if sum(x[2] for x in c.historico if x[5] == "reserva") > 0]
     total_contas = sum(sum(x[2] for x in c.historico if x[5] == "reserva") for c in clientes_conta)
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Caixa", display_valor)
-    if col1.button("👁️", key="btn_caixa"):
-        st.session_state["mostrar_caixa"] = not st.session_state["mostrar_caixa"]
-    col2.metric("Vendas Hoje", len(vendas_hoje))
-    col3.metric("Produtos Baixos", len(produtos_baixos))
     display_conta = f"R$ {total_contas:.2f}" if st.session_state["mostrar_contas"] else "R$ ****"
-    col4.metric("Clientes com Conta", display_conta)
-    if col4.button("👁️", key="btn_conta"):
-        st.session_state["mostrar_contas"] = not st.session_state["mostrar_contas"]
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    # Card estilizado
+    def card(col, titulo, valor, cor, toggle_key=None, toggle_state=None):
+        with col:
+            st.markdown(
+                f"""
+                <div style="background-color:{cor}; padding:18px; border-radius:12px; 
+                            box-shadow:2px 2px 10px rgba(0,0,0,0.15); text-align:center; color:white;">
+                    <h4 style="margin:0;">{titulo}</h4>
+                    <p style="font-size:22px; font-weight:bold; margin:8px 0;">{valor}</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            if toggle_key:
+                if st.button("👁️", key=toggle_key):
+                    st.session_state[toggle_state] = not st.session_state[toggle_state]
+
+    # Cards
+    card(col1, "💰 Total Caixa", display_valor, "#27ae60", "btn_caixa", "mostrar_caixa")
+    card(col2, "🛒 Vendas Hoje", len(vendas_hoje), "#2980b9")
+    card(col3, "⚠️ Produtos Baixos", len(produtos_baixos), "#e67e22")
+    card(col4, "📂 Clientes com Conta", display_conta, "#c0392b", "btn_conta", "mostrar_contas")
+
 
 # ================= Função principal de telas =================
 def tela_funcional():
@@ -374,3 +393,4 @@ if st.session_state["tela_selecionada"] == "Dashboard":
     dashboard()
 else:
     tela_funcional()
+
