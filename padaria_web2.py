@@ -214,7 +214,6 @@ def dashboard():
             st.session_state["mostrar_contas"] = not st.session_state["mostrar_contas"]
 
 
-# ================= Função principal de telas =================
 def tela_funcional():
     mostrar_logo(200)
     tela = st.session_state["tela_selecionada"]
@@ -272,20 +271,19 @@ def tela_funcional():
             if not st.session_state["clientes"]:
                 st.info("Nenhum cliente cadastrado")
             else:
-                # expander geral contendo selectbox dos clientes ordenados
+                # Expander geral contendo clientes em ordem alfabética
                 with st.expander("Clientes", expanded=True):
                     nomes_clientes = sorted([c.nome for c in st.session_state["clientes"]])
                     sel_cliente = st.selectbox("Selecione o cliente", nomes_clientes, key="hist_sel_cliente")
                     cliente = next(c for c in st.session_state["clientes"] if c.nome == sel_cliente)
-                    historico_reserva = [x for x in cliente.historico if x[5] == "reserva"]
-                    if historico_reserva:
+                    if cliente.historico:
                         df = pd.DataFrame(
-                            historico_reserva,
+                            cliente.historico,
                             columns=["Produto", "Qtd", "Total", "Data/Hora", "Funcionário", "Tipo"]
                         )
                         st.table(df)
                     else:
-                        st.info("Sem histórico de compras em aberto.")
+                        st.info("Sem histórico de compras.")
 
         elif submenu == "Conta":
             box_title("Gerenciar Conta do Cliente")
@@ -364,8 +362,8 @@ def tela_funcional():
                     vendas_filtradas = [v for v in st.session_state["vendas"] if v[6].date() == now.date()]
                 elif submenu == "Semanal":
                     today = now.date()
-                    start_week = today - timedelta(days=today.weekday())  # segunda
-                    end_week = start_week + timedelta(days=6)  # domingo
+                    start_week = today - timedelta(days=today.weekday())
+                    end_week = start_week + timedelta(days=6)
                     vendas_filtradas = [v for v in st.session_state["vendas"] if start_week <= v[6].date() <= end_week]
                 elif submenu == "Mensal":
                     vendas_filtradas = [v for v in st.session_state["vendas"] if v[6].year == now.year and v[6].month == now.month]
@@ -380,9 +378,7 @@ def tela_funcional():
                     st.markdown(f"**Total Vendas ({submenu}): R$ {total_vendas:.2f}**")
                 else:
                     st.info(f"Nenhuma venda registrada no período {submenu.lower()}.")
-
         else:
-            # Caixa principal: resumo do caixa
             box_title("Caixa")
             total_caixa = sum(v[4] for v in st.session_state["vendas"] if v[5] == "imediata")
             st.markdown(f"**Total em Caixa:** R$ {total_caixa:.2f}")
@@ -424,4 +420,5 @@ if st.session_state["tela_selecionada"] == "Dashboard":
     dashboard()
 else:
     tela_funcional()
+
 
