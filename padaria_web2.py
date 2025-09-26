@@ -5,6 +5,36 @@ import pandas as pd
 from datetime import datetime
 from PIL import Image
 
+# ================= Usuários / Login =================
+class Usuario:
+    def __init__(self, nome, senha, perfil):
+        self.nome = nome.title().strip()
+        self.senha = senha
+        self.perfil = perfil
+
+# Inicializar lista de usuários no session_state
+if "usuarios" not in st.session_state:
+    st.session_state["usuarios"] = []
+
+def cadastrar_usuario(nome, senha, perfil):
+    if not nome.strip() or not senha.strip():
+        st.error("Digite usuário e senha")
+        return
+    # Verifica se já existe
+    for u in st.session_state["usuarios"]:
+        if u.nome.lower() == nome.lower():
+            st.warning("Usuário já existe")
+            return
+    novo = Usuario(nome, senha, perfil)
+    st.session_state["usuarios"].append(novo)
+    st.success(f"Usuário {nome} ({perfil}) cadastrado com sucesso!")
+
+def autenticar_usuario(nome, senha):
+    for u in st.session_state["usuarios"]:
+        if u.nome.lower() == nome.lower() and u.senha == senha:
+            return u
+    return None
+
 # ================= Classes =================
 class Produto:
     def __init__(self, codigo, nome, qtd, preco, estoque_min=5):
@@ -376,3 +406,4 @@ else:
         tela_caixa(tipo)
     else:
         tela_funcional()
+
