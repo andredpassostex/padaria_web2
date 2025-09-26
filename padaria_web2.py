@@ -353,44 +353,6 @@ def tela_funcional():
             tipo = st.radio("Tipo de Venda", ["imediata", "reserva"], key="venda_tipo")
             if st.button("Registrar Venda", key="btn_registrar_venda"):
                 registrar_venda(produto, funcionario, cliente, qtd, tipo)
-# ================= Tela Relatórios =================
-def tela_relatorios():
-    st.title("📊 Relatórios do Sistema")
-
-    # Histórico de Vendas
-    st.subheader("Histórico de Vendas")
-    if "vendas" in st.session_state and len(st.session_state["vendas"]) > 0:
-        df_vendas = pd.DataFrame(st.session_state["vendas"])
-
-        # Ajustar colunas para exibição
-        if "status" in df_vendas.columns:
-            df_vendas["status_colorido"] = df_vendas["status"].apply(
-                lambda x: f"<span style='color:green;font-weight:bold'>Pago</span>" if x == "Pago"
-                else f"<span style='color:orange;font-weight:bold'>Reserva</span>"
-            )
-            df_vendas = df_vendas.drop(columns=["status"])
-            df_vendas = df_vendas.rename(columns={"status_colorido": "Status"})
-
-        # Exibir como tabela interativa ordenável
-        st.dataframe(
-            df_vendas.sort_values(by="Data", ascending=False),
-            use_container_width=True
-        )
-    else:
-        st.info("Nenhuma venda registrada até o momento.")
-
-    st.markdown("---")
-
-    # Estoque
-    st.subheader("📦 Relatório de Estoque")
-    if "produtos" in st.session_state and len(st.session_state["produtos"]) > 0:
-        df_produtos = pd.DataFrame([p.__dict__ for p in st.session_state["produtos"]])
-        st.dataframe(
-            df_produtos.sort_values(by="quantidade", ascending=True),
-            use_container_width=True
-        )
-    else:
-        st.warning("Nenhum produto cadastrado no estoque.")
 
 # ================= Sidebar (menu) =================
 menu_principal = ["Dashboard", "Vendas", "Caixa"]
