@@ -324,14 +324,22 @@ def tela_login():
         else:
             st.error("Usuário ou senha incorretos")
 
-    st.markdown("---")
-    st.subheader("Cadastrar Novo Usuário")
-    nome =  st.text_input("Usuário (novo cadastro)")
-    senha = st.text_input("Senha", type="password", key="senha_cadastro")
-    perfil = st.selectbox("Perfil", ["Gerente", "Vendedor"])
-    if st.button("Cadastrar Usuário"):
-        cadastrar_usuario(nome, senha, perfil)
-        st.experimental_rerun()
+ st.subheader("Cadastrar Novo Usuário")
+nome_c = st.text_input("Usuário (novo cadastro)", key="nome_cadastro")
+senha_c = st.text_input("Senha", type="password", key="senha_cadastro")
+perfil_c = st.selectbox("Perfil", ["Gerente", "Vendedor"], key="perfil_cadastro")
+
+if st.button("Cadastrar Usuário"):
+    if nome_c and senha_c:
+        novo = cadastrar_usuario(nome_c, senha_c, perfil_c)
+        if novo:
+            st.success(f"Usuário {nome_c} cadastrado com sucesso!")
+            # Limpa os campos de input
+            st.session_state["nome_cadastro"] = ""
+            st.session_state["senha_cadastro"] = ""
+    else:
+        st.warning("Preencha todos os campos para cadastrar o usuário.")
+
 
 # ================= Main =================
 def main():
@@ -355,4 +363,5 @@ def main():
 # ================= Run =================
 if __name__=="__main__":
     main()
+
 
