@@ -4,7 +4,6 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from PIL import Image
-import io
 
 # --- Inicialização do estado ---
 if "produtos" not in st.session_state:
@@ -82,7 +81,8 @@ def registrar_venda(produto_nome, funcionario, venda_qtd):
     produto[2] -= venda_qtd
     valor_venda = venda_qtd * produto[3]
     st.session_state["caixa_total"] += valor_venda
-    data_hora = datetime.now()  # armazenamos como datetime
+    data_hora = datetime.now()
+    # Adiciona venda com segurança: garante 7 elementos
     st.session_state["vendas"].append([produto[0], produto[1], venda_qtd, produto[3], valor_venda, funcionario, data_hora])
     st.success(f"Venda de {venda_qtd}x {produto[1]} registrada por {funcionario}!")
     if produto[2] <= 5:
@@ -105,9 +105,8 @@ def remover_produto(codigo):
         st.warning("Código não encontrado.")
 
 
-# --- Carregar / Upload da logo com fallback ---
+# --- Carregar / Upload da logo ---
 def try_load_logo():
-    # caminhos candidatos (tente 'logo.png' na pasta do app)
     candidates = ["logo.png", "./logo.png", "images/logo.png"]
     for c in candidates:
         if os.path.exists(c):
@@ -120,27 +119,24 @@ def try_load_logo():
 
 logo = try_load_logo()
 
-# Cabeçalho / banner centralizado
 if logo is None:
-    st.warning("Logo não encontrada (arquivo 'logo.png'). Você pode fazer upload da logo abaixo ou colocar 'logo.png' na pasta do app.")
-    uploaded = st.file_uploader("Upload da logo (PNG/JPG) — será salva como logo.png", type=["png", "jpg", "jpeg"])
+    st.warning("Logo não encontrada (arquivo 'logo.png').")
+    uploaded = st.file_uploader("Upload da logo (PNG/JPG)", type=["png", "jpg", "jpeg"])
     if uploaded is not None:
         try:
             logo = Image.open(uploaded)
-            # salvar cópia local
             with open("logo.png", "wb") as f:
                 f.write(uploaded.getbuffer())
             st.success("Logo salva como 'logo.png'.")
         except Exception as e:
             st.error(f"Erro ao abrir/salvar imagem: {e}")
 
-# exibir (centralizado)
-if logo is not None:
+# Exibição do logo / título
+if logo:
     cols = st.columns([1, 2, 1])
     cols[1].image(logo, width=260)
     cols[1].markdown("<h2 style='text-align:center; color:#4B2E2E; margin-top:6px;'>Sistema de Padaria</h2>", unsafe_allow_html=True)
 else:
-    # fallback textual centralizado
     st.markdown("<h1 style='text-align:center; color:#4B2E2E;'>🥖 Lucio Pães - Sistema de Padaria</h1>", unsafe_allow_html=True)
 
 
@@ -153,7 +149,6 @@ choice = st.sidebar.radio("Navegação", menu)
 # --- Funcionários ---
 if choice == "Funcionários":
     box_title("Funcionários Cadastrados", "👨‍🍳")
-
     if st.session_state["funcionarios"]:
         for f in st.session_state["funcionarios"]:
             st.write(f)
@@ -170,10 +165,10 @@ if choice == "Funcionários":
 elif choice == "Estoque":
     box_title("Produtos Cadastrados", "📦")
 
-    # normaliza produtos antigos que pudessem não ter código (compatibilidade)
+    # Normaliza produtos antigos (compatibilidade)
     normalized = []
     for p in st.session_state["produtos"]:
-        if len(p) == 3:  # [nome, qtd, preco]
+        if len(p) == 3:
             codigo = str(st.session_state["codigo_produto"]).zfill(3)
             st.session_state["codigo_produto"] += 1
             normalized.append([codigo, p[0], int(p[1]), float(p[2])])
@@ -214,10 +209,8 @@ elif choice == "Venda":
     if not st.session_state["produtos"] or not st.session_state["funcionarios"]:
         st.info("Cadastre produtos e funcionários antes de registrar vendas.")
     else:
-        # listagem clara: mostrar "Código - Nome" na seleção
         produtos_display = [f"{p[0]} - {p[1]}" for p in st.session_state["produtos"]]
         prod_sel = st.selectbox("Produto", produtos_display, key="select_prod_venda")
-        # extrai nome por código
         prod_codigo = prod_sel.split(" - ")[0]
         produto_obj = next((p for p in st.session_state["produtos"] if p[0] == prod_codigo), None)
         func_sel = st.selectbox("Funcionário", st.session_state["funcionarios"], key="select_func_venda")
@@ -232,9 +225,19 @@ elif choice == "Caixa":
     box_title("Relatório de Vendas do Dia", "📊")
 
     if st.session_state["vendas"]:
-        df_vendas = pd.DataFrame(st.session_state["vendas"], columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora"])
-        # garante datetime
+        vendas_normalizadas = []
+        for v in st.session_state["vendas"]:
+            v_corrigido = list(v) + [None]*(7 - len(v))
+            vendas_normalizadas.append(v_corrigido[:7])
+
+        df_vendas = pd.DataFrame(
+            vendas_normalizadas,
+            columns=["Código", "Item", "Quantidade", "Valor Unitário", "Total", "Funcionário", "Data/Hora"]
+        )
+
         df_vendas["Data/Hora"] = pd.to_datetime(df_vendas["Data/Hora"], errors="coerce")
+        df_vendas["Quantidade"] = pd.to_numeric(df_vendas["Quantidade"], errors="coerce")
+        df_vendas["Valor Unitário"] = pd.to_numeric(df_vendas["Valor Unitário"], errors="coerce")
         df_vendas["Total"] = pd.to_numeric(df_vendas["Total"], errors="coerce")
 
         hoje = datetime.now().date()
