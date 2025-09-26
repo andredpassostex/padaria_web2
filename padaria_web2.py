@@ -185,17 +185,29 @@ def tela_funcional():
                 st.info("Nenhum funcionário cadastrado")
 
     # Clientes
-    elif tela=="Clientes":
-        if submenu=="Histórico":
-            box_title("Histórico de Clientes")
-            if st.session_state["clientes"]:
-                for c in st.session_state["clientes"]:
-                    st.write(c.nome)
-                    if c.historico:
-                        df = pd.DataFrame(c.historico, columns=["Produto","Qtd","Total","Data/Hora","Funcionário","Tipo"])
-                        st.table(df)
-                    else:
-                        st.info("Sem histórico")
+  # ================= Clientes - Histórico =================
+elif tela == "Clientes" and submenu == "Histórico":
+    box_title("Histórico de Clientes")
+
+    if not st.session_state["clientes"]:
+        st.info("Nenhum cliente cadastrado")
+    else:
+        # Percorrer todos os clientes
+        for cliente in st.session_state["clientes"]:
+            # Pegar apenas histórico de reservas pendentes
+            historico_reserva = [x for x in cliente.historico if x[5] == "reserva"]
+
+            # Criar um expander para cada cliente
+            with st.expander(cliente.nome, expanded=False):
+                if historico_reserva:
+                    df = pd.DataFrame(
+                        historico_reserva,
+                        columns=["Produto", "Qtd", "Total", "Data/Hora", "Funcionário", "Tipo"]
+                    )
+                    st.table(df)
+                else:
+                    st.info("Sem histórico de compras em aberto.")
+
             else:
                 st.info("Nenhum cliente cadastrado")
         elif submenu=="Conta":
@@ -331,3 +343,4 @@ if st.session_state["tela_selecionada"]=="Dashboard":
     dashboard()
 else:
     tela_funcional()
+
