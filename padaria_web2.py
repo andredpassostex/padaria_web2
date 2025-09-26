@@ -143,11 +143,25 @@ elif menu == "Venda":
     if not st.session_state['produtos'] or not st.session_state['funcionarios']:
         st.info("Cadastre produtos e funcionários antes de registrar vendas.")
     else:
-        prod_nome = st.selectbox("Produto", [p[0] for p in st.session_state['produtos']])
+        # Campo de texto com sugestão dinâmica
+        produto_digitado = st.text_input("Digite o nome do produto")
+
+        sugestoes = [p[0] for p in st.session_state['produtos'] 
+                     if produto_digitado.lower() in p[0].lower()] if produto_digitado else []
+
+        if sugestoes:
+            prod_nome = st.selectbox("Sugestões de produtos", sugestoes)
+        else:
+            prod_nome = None
+
         func_nome = st.selectbox("Funcionário", st.session_state['funcionarios'])
         qtd_venda = st.number_input("Quantidade", min_value=1, step=1)
+
         if st.button("Registrar Venda"):
-            registrar_venda(prod_nome, func_nome, qtd_venda)
+            if prod_nome:
+                registrar_venda(prod_nome, func_nome, qtd_venda)
+            else:
+                st.error("Digite e selecione um produto válido!")
 
 # Caixa
 elif menu == "Caixa":
@@ -159,3 +173,4 @@ elif menu == "Caixa":
         gerar_relatorio("diario")
     if st.button("Relatório Semanal"):
         gerar_relatorio("semanal")
+
