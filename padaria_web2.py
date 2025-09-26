@@ -186,111 +186,85 @@ def tela_funcional():
             else:
                 st.info("Nenhum funcionário cadastrado")
 
-   # ================= Clientes =================
-elif tela=="Clientes":
-    if submenu=="Histórico":
-        box_title("Histórico de Clientes")
-        if st.session_state["clientes"]:
-            for c in st.session_state["clientes"]:
-                st.write(c.nome)
-                if c.historico:
-                    df = pd.DataFrame(c.historico,columns=["Produto","Qtd","Total","Data/Hora","Funcionário","Tipo"])
+    # Clientes
+    elif tela=="Clientes":
+        if submenu=="Histórico":
+            box_title("Histórico de Clientes")
+            if st.session_state["clientes"]:
+                for c in st.session_state["clientes"]:
+                    st.write(c.nome)
+                    if c.historico:
+                        df = pd.DataFrame(c.historico,columns=["Produto","Qtd","Total","Data/Hora","Funcionário","Tipo"])
+                        st.table(df)
+                    else:
+                        st.info("Sem histórico")
+            else:
+                st.info("Nenhum cliente cadastrado")
+
+        elif submenu=="Conta":
+            box_title("Gerenciar Conta do Cliente")
+            if st.session_state["clientes"]:
+                nomes = [c.nome for c in st.session_state["clientes"]]
+                sel = st.selectbox("Escolha o cliente", nomes)
+                cliente = next(c for c in st.session_state["clientes"] if c.nome==sel)
+
+                total_reserva = sum(x[2] for x in cliente.historico if x[5]=="reserva")
+                st.markdown(f"**Total em Reserva:** R$ {total_reserva:.2f}")
+
+                historico_reserva = [x for x in cliente.historico if x[5]=="reserva"]
+                if historico_reserva:
+                    df = pd.DataFrame(historico_reserva, columns=["Produto", "Qtd", "Total", "Data/Hora", "Funcionário", "Tipo"])
                     st.table(df)
                 else:
-                    st.info("Sem histórico")
-        else:
-            st.info("Nenhum cliente cadastrado")
+                    st.info("Sem compras em aberto.")
 
-    elif submenu=="Conta":
-        box_title("Gerenciar Conta do Cliente")
-        if st.session_state["clientes"]:
-            nomes = [c.nome for c in st.session_state["clientes"]]
-            sel = st.selectbox("Escolha o cliente", nomes)
-            cliente = next(c for c in st.session_state["clientes"] if c.nome==sel)
-
-            # Total em reserva
-            total_reserva = sum(x[2] for x in cliente.historico if x[5]=="reserva")
-            st.markdown(f"**Total em Reserva:** R$ {total_reserva:.2f}")
-
-            # Histórico detalhado das reservas
-            historico_reserva = [x for x in cliente.historico if x[5]=="reserva"]
-            if historico_reserva:
-                df = pd.DataFrame(historico_reserva, columns=["Produto", "Qtd", "Total", "Data/Hora", "Funcionário", "Tipo"])
-                st.table(df)
+                if st.button("Zerar Conta"):
+                    for x in cliente.historico:
+                        if x[5]=="reserva":
+                            x[5]="pago"
+                    st.success(f"Conta de {cliente.nome} zerada.")
             else:
-                st.info("Sem compras em aberto.")
+                st.info("Nenhum cliente cadastrado")
 
-            # Botão para zerar conta
-            if st.button("Zerar Conta"):
-                for x in cliente.historico:
-                    if x[5]=="reserva":
-                        x[5]="pago"
-                st.success(f"Conta de {cliente.nome} zerada.")
     # Fornecedores
     elif tela=="Fornecedores":
         if submenu=="Cadastrar Fornecedor":
             box_title("Cadastrar Fornecedor")
-            nome = st.text_input("Nome do Fornecedor")
+            nome = st.text_input("Nome")
             contato = st.text_input("Contato")
-            produto = st.text_input("Produto Fornecido")
-            preco = st.number_input("Preço Unitário", min_value=0.01,value=1.0,format="%.2f")
-            prazo = st.number_input("Prazo de Entrega (dias)",min_value=0,value=0)
+            produto = st.text_input("Produto")
+            preco = st.number_input("Preço Unitário", min_value=0.01,value=1.0)
+            prazo = st.number_input("Prazo de Entrega (dias)", min_value=0,value=0)
             if st.button("Cadastrar Fornecedor"):
                 cadastrar_fornecedor(nome,contato,produto,preco,prazo)
-        elif submenu=="Fornecedores":
-            box_title("Lista de Fornecedores")
-            if st.session_state["fornecedores"]:
-                df = pd.DataFrame([[f.nome,f.contato,f.produto,f.preco,f.prazo] for f in st.session_state["fornecedores"]],
-                                  columns=["Fornecedor","Contato","Produto","Preço","Prazo"])
-                st.table(df)
-            else:
-                st.info("Nenhum fornecedor cadastrado")
+        elif submenu=="Relatório Diário":
+            box_title("Relatório Diário de Fornecedores")
+            st.info("Funcionalidade em desenvolvimento")
+        elif submenu=="Relatório Semanal":
+            box_title("Relatório Semanal de Fornecedores")
+            st.info("Funcionalidade em desenvolvimento")
+        elif submenu=="Relatório Mensal":
+            box_title("Relatório Mensal de Fornecedores")
+            st.info("Funcionalidade em desenvolvimento")
 
     # Vendas
     elif tela=="Vendas":
         box_title("Registrar Venda")
         if not st.session_state["produtos"] or not st.session_state["funcionarios"]:
-            st.info("Cadastre produtos e funcionários antes de registrar vendas.")
+            st.info("Cadastre produtos e funcionários antes de vender")
         else:
             produtos_display = [f"{p.codigo} - {p.nome}" for p in st.session_state["produtos"]]
             prod_sel = st.selectbox("Produto",produtos_display)
-            produto = next(p for p in st.session_state["produtos"] if p.codigo==prod_sel.split(" - ")[0])
+            prod_codigo = prod_sel.split(" - ")[0]
+            produto_obj = next(p for p in st.session_state["produtos"] if p.codigo==prod_codigo)
+
             func_sel = st.selectbox("Funcionário",[f.nome for f in st.session_state["funcionarios"]])
-            funcionario = next(f for f in st.session_state["funcionarios"] if f.nome==func_sel)
             cliente_nome = st.text_input("Nome do Cliente (opcional)")
-            cliente = cadastrar_cliente(cliente_nome) if cliente_nome else None
-            qtd = st.number_input("Quantidade", min_value=1,value=1)
-            tipo = st.radio("Tipo de Venda",["imediata","reserva"])
+            qtd = st.number_input("Quantidade",min_value=1,value=1)
+            tipo = st.radio("Tipo de venda",["imediata","reserva"])
+
+            cliente_obj = cadastrar_cliente(cliente_nome) if cliente_nome else None
+
             if st.button("Registrar Venda"):
-                registrar_venda(produto,funcionario,cliente,qtd,tipo)
-
-# ================= Sidebar =================
-menu_principal = ["Dashboard","Vendas","Caixa"]
-menu_expansivo = {
-    "Estoque":["Cadastrar Produto","Produtos"],
-    "Funcionários":["Cadastrar Funcionário","Funcionários","Remover Funcionário"],
-    "Clientes":["Histórico","Conta"],
-    "Fornecedores":["Cadastrar Fornecedor","Fornecedores"]
-}
-
-st.sidebar.header("📌 Menu")
-for item in menu_principal:
-    if st.sidebar.button(item):
-        st.session_state["tela_selecionada"]=item
-        st.session_state["submenu_selecionado"]=None
-
-for item, submenus in menu_expansivo.items():
-    exp = st.sidebar.expander(item,expanded=False)
-    with exp:
-        for sub in submenus:
-            if st.button(sub,key=f"{item}_{sub}"):
-                st.session_state["tela_selecionada"]=item
-                st.session_state["submenu_selecionado"]=sub
-
-# ================= Render =================
-if st.session_state["tela_selecionada"]=="Dashboard":
-    dashboard()
-else:
-    tela_funcional()
-
-
+                funcionario_obj = next(f for f in st.session_state["funcionarios"] if f.nome==func_sel)
+                registrar_venda(produto_obj,funcionario_obj,cliente_obj,qtd,tipo)
